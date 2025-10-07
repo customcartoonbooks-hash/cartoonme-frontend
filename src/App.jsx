@@ -13,8 +13,10 @@ const MasterpieceMe = () => {
   const [variationHistory, setVariationHistory] = useState({});
   const [historyIndex, setHistoryIndex] = useState({});
   const [cartTotal] = useState(49.99);
+
   const BACKEND_URL = 'https://cartoonme-backend.onrender.com';
-const artists = [
+
+  const artists = [
     { 
       name: 'Leonardo da Vinci', 
       period: 'Renaissance', 
@@ -227,26 +229,27 @@ const artists = [
   };
 
   const selectGender = (gender) => {
+    console.log('Selected gender:', gender);
     setSelectedGender(gender);
-    startGenerating();
+    startGenerating(gender);
   };
 
-  const startGenerating = () => {
+  const startGenerating = (gender) => {
     setCurrentArtistGenerating(0);
     setSelectedVariations({});
     setShuffleCount({});
     setVariationHistory({});
     setHistoryIndex({});
-    setTimeout(() => generateVariationsForArtist(0), 100);
+    setTimeout(() => generateVariationsForArtist(0, gender), 100);
   };
 
-  const generateVariationsForArtist = async (artistIndex) => {
+  const generateVariationsForArtist = async (artistIndex, gender) => {
     setCurrentStep('generating');
     setCurrentArtistGenerating(artistIndex);
     
     try {
       const artist = artists[artistIndex];
-      const genderData = selectedGender === 'male' ? artist.male : artist.female;
+      const genderData = (gender || selectedGender) === 'male' ? artist.male : artist.female;
       
       const response = await fetch(`${BACKEND_URL}/api/generate-variations`, {
         method: 'POST',
@@ -495,7 +498,7 @@ const artists = [
               <div className="flex gap-3">
                 <button onClick={goBackToHistory} disabled={!variationHistory[currentArtistGenerating] || (historyIndex[currentArtistGenerating] || 0) === 0} className={'px-6 py-3 rounded-full font-bold transition flex items-center gap-2 ' + (!variationHistory[currentArtistGenerating] || (historyIndex[currentArtistGenerating] || 0) === 0 ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-gray-700 text-white hover:bg-gray-800')}>
                   <Undo2 className="w-5 h-5" />Back</button>
-                <button onClick={goForwardInHistory} disabled={!variationHistory[currentArtistGenerating] || (historyIndex[currentArtistGenerating] !== undefined ? historyIndex[currentArtistGenerating] : (variationHistory[currentArtistGenerating]?.length || 1) - 1) >= ((variationHistory[currentArtistGenerating]?.length || 1) - 1)} className={'px-6 py-3 rounded-full font-bold transition flex items-center gap-2 ' + (!variationHistory[currentArtistGenerating] || (historyIndex[currentArtistGenerating] !== undefined ? historyIndex[currentArtistGenerating] : (variationHistory[currentArtistGenerating]?.length || 1) - 1) ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-gray-700 text-white hover:bg-gray-800')}>
+                <button onClick={goForwardInHistory} disabled={!variationHistory[currentArtistGenerating] || (historyIndex[currentArtistGenerating] !== undefined ? historyIndex[currentArtistGenerating] : (variationHistory[currentArtistGenerating]?.length || 1) - 1) >= ((variationHistory[currentArtistGenerating]?.length || 1) - 1)} className={'px-6 py-3 rounded-full font-bold transition flex items-center gap-2 ' + (!variationHistory[currentArtistGenerating] || (historyIndex[currentArtistGenerating] !== undefined ? historyIndex[currentArtistGenerating] : (variationHistory[currentArtistGenerating]?.length || 1) - 1) >= ((variationHistory[currentArtistGenerating]?.length || 1) - 1) ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-gray-700 text-white hover:bg-gray-800')}>
                   Forward<Redo2 className="w-5 h-5" /></button>
                 <button onClick={shuffleVariations} disabled={(shuffleCount[currentArtistGenerating] || 0) >= 1} className={'px-6 py-3 rounded-full font-bold transition ' + ((shuffleCount[currentArtistGenerating] || 0) >= 1 ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-amber-700 text-white hover:bg-amber-800')}>
                   Shuffle ({1 - (shuffleCount[currentArtistGenerating] || 0)} left)</button>
@@ -505,7 +508,7 @@ const artists = [
               {generatedImages.map((img) => (
                 <div key={img.id} onClick={() => selectVariation(img)} className="relative cursor-pointer group">
                   <div className="overflow-hidden rounded-2xl shadow-xl hover:shadow-2xl transition-all relative">
-                    <img src={img.url} alt="Variation" className="w-full h-96 object-cover group-hover:scale-110 transition-transform duration-500" />
+                    <img src={img.url} alt="Variation" className="w-full h-96 object-contain bg-gray-50 group-hover:scale-105 transition-transform duration-500" />
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none"><div className="text-white text-4xl font-black opacity-30 transform -rotate-45">PREVIEW</div></div>
                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center"><div className="bg-white rounded-full p-6"><Check className="w-12 h-12 text-amber-700" /></div></div>
                   </div>
@@ -528,7 +531,7 @@ const artists = [
               {artists.map((artist, artistIdx) => {
                 const selectedImg = selectedVariations[artistIdx];
                 return (<div key={artistIdx} className="bg-white rounded-2xl p-3 shadow-xl hover:shadow-2xl transition-shadow">
-                    <img src={selectedImg?.url || ''} alt={'Page ' + (artistIdx + 1)} className="w-full h-64 object-cover rounded-xl mb-3" />
+                    <img src={selectedImg?.url || ''} alt={'Page ' + (artistIdx + 1)} className="w-full h-64 object-contain bg-gray-50 rounded-xl mb-3" />
                     <div className={artist.color + ' text-white px-3 py-2 rounded-lg text-center'}>
                       <p className="font-black text-sm mb-1">{artist.name}</p>
                       <p className="text-xs opacity-90">{artist.period}</p>
