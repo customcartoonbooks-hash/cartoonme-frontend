@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Upload, ArrowRight, Check, Loader, Copy, Home, Undo, Redo } from 'lucide-react';
+import { Upload, ArrowRight, Check, Loader, Copy, Home, Undo, Redo, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const BACKEND_URL = 'https://cartoonme-backend.onrender.com';
 
@@ -18,6 +18,13 @@ export default function MasterpieceMe() {
   const [historyIndex, setHistoryIndex] = useState({});
   const [isDragging, setIsDragging] = useState(false);
   const [showCopyNotification, setShowCopyNotification] = useState(false);
+  const [showSaveNotification, setShowSaveNotification] = useState(false);
+  const [estimatedTimeLeft, setEstimatedTimeLeft] = useState(40);
+  const [isSessionLoading, setIsSessionLoading] = useState(false);
+  const [cartItems, setCartItems] = useState([]);
+  const [cartTotal, setCartTotal] = useState(49.99);
+  const [orderNumber, setOrderNumber] = useState(null);
+  const [currentBookPage, setCurrentBookPage] = useState(0);
 
   const artists = [
     { name: 'Leonardo da Vinci', period: 'Renaissance', prompt: 'Renaissance portrait painting' },
@@ -34,51 +41,133 @@ export default function MasterpieceMe() {
     { name: 'Grant Wood', period: 'American Regionalism', prompt: 'Grant Wood American portrait' }
   ];
 
-  // CRITICAL: Load session from URL on mount
+  const upsellProducts = [
+    {
+      name: 'Premium Framed Poster',
+      price: 29.99,
+      originalPrice: 44.99,
+      emoji: '🖼️',
+      description: 'Your favorite cartoon in a beautiful 18x24" frame ready to hang!',
+      features: ['Museum-quality print', 'Premium black frame included', 'Ready to hang hardware'],
+      color: 'from-blue-50 to-cyan-50',
+      borderColor: 'border-blue-200 hover:border-blue-400',
+      buttonColor: 'bg-blue-600 hover:bg-blue-700'
+    },
+    {
+      name: 'Custom Cartoon Mug',
+      price: 19.99,
+      emoji: '☕',
+      description: 'Start every morning with your cartoon self! High-quality ceramic mug.',
+      features: ['Dishwasher & microwave safe', 'Vibrant, fade-resistant printing', '11oz capacity'],
+      color: 'from-pink-50 to-rose-50',
+      borderColor: 'border-pink-200 hover:border-pink-400',
+      buttonColor: 'bg-pink-600 hover:bg-pink-700'
+    },
+    {
+      name: 'Decorative Throw Pillow',
+      price: 24.99,
+      emoji: '🛏️',
+      description: 'Cozy up with your cartoon on a soft 16x16" pillow!',
+      features: ['Super soft premium fabric', 'Hidden zipper design', 'Machine washable cover'],
+      color: 'from-purple-50 to-indigo-50',
+      borderColor: 'border-purple-200 hover:border-purple-400',
+      buttonColor: 'bg-purple-600 hover:bg-purple-700'
+    },
+    {
+      name: 'Custom Phone Case',
+      price: 22.99,
+      emoji: '📱',
+      description: 'Protect your phone in style with your cartoon!',
+      features: ['Fits iPhone & Samsung models', 'Durable protective case', 'Scratch-resistant finish'],
+      color: 'from-yellow-50 to-orange-50',
+      borderColor: 'border-yellow-200 hover:border-yellow-400',
+      buttonColor: 'bg-orange-600 hover:bg-orange-700'
+    },
+    {
+      name: 'Custom T-Shirt',
+      price: 27.99,
+      emoji: '👕',
+      description: 'Wear your cartoon! Premium quality tee with your design.',
+      features: ['100% cotton comfort', 'All sizes S-3XL available', 'Durable heat-transfer print'],
+      color: 'from-green-50 to-emerald-50',
+      borderColor: 'border-green-200 hover:border-green-400',
+      buttonColor: 'bg-green-600 hover:bg-green-700'
+    }
+  ];
+
+  // Load session from URL on mount
   useEffect(() => {
     const loadSessionFromUrl = async () => {
       const path = window.location.pathname;
+      const urlParams = new URLSearchParams(window.location.search);
+      
+      // Check for success page
+      if (urlParams.get('success') === 'true') {
+        const sessionMatch = path.match(/\/session\/([^\/\?]+)/);
+        if (sessionMatch) {
+          setSessionId(sessionMatch[1]);
+          setOrderNumber('MM' + Date.now().toString().slice(-8));
+          setCurrentStep('success');
+        }
+        return;
+      }
+      
       const sessionMatch = path.match(/\/session\/([^\/\?]+)/);
       
-      if (sessionMatch) {
+      if (sessionMatch && !isSessionLoading) {
         const urlSessionId = sessionMatch[1];
         console.log('🔍 Loading session from URL:', urlSessionId);
+        setIsSessionLoading(true);
         
         try {
           const response = await fetch(`${BACKEND_URL}/api/session/${urlSessionId}`);
           const data = await response.json();
           
-          if (data.success && data.session) {
-            const session = data.session;
-            console.log('✅ Session loaded:', session);
-            
-            // Restore all state
+          const session = data;
+          
+          console.log('✅ Session loaded:', session);
+          
+          if (session && session.uploaded_image) {
             setSessionId(session.session_id);
-            setUploadedImage(session.uploaded_image);
             setSelectedGender(session.selected_gender);
             setCurrentArtist(session.current_artist || 0);
-            setGeneratedImages(session.generated_images || {});
-            setSelectedVariations(session.selected_variations || {});
             setShuffleCount(session.shuffle_count || {});
             setVariationHistory(session.variation_history || {});
             setHistoryIndex(session.history_index || {});
             
-            // Determine which step to show
+            const parsedGeneratedImages = typeof session.generated_images === 'string' 
+              ? JSON.parse(session.generated_images) 
+              : (session.generated_images || {});
+            const parsedSelectedVariations = typeof session.selected_variations === 'string'
+              ? JSON.parse(session.selected_variations)
+              : (session.selected_variations || {});
+            
+            setGeneratedImages(parsedGeneratedImages);
+            setSelectedVariations(parsedSelectedVariations);
+            setUploadedImage(session.uploaded_image);
+            
+            const currentArtistNum = session.current_artist || 0;
+            
             if (!session.selected_gender) {
               setCurrentStep('gender-select');
-            } else if (session.current_artist < 12) {
-              if (session.generated_images && session.generated_images[session.current_artist]) {
-                setCurrentStep('select-variation');
-              } else {
-                setCurrentStep('generating');
-                generateVariations(session.current_artist, session.selected_gender);
-              }
-            } else {
+            } else if (currentArtistNum >= 12) {
               setCurrentStep('preview');
+            } else if (parsedGeneratedImages[currentArtistNum]) {
+              setCurrentStep('select-variation');
+            } else {
+              setCurrentStep('generating');
+              setTimeout(() => {
+                generateVariations(currentArtistNum, session.selected_gender, session.uploaded_image);
+              }, 500);
             }
+          } else {
+            setCurrentStep('home');
           }
         } catch (error) {
           console.error('❌ Failed to load session:', error);
+          setCurrentStep('home');
+        } finally {
+          setIsSessionLoading(false);
         }
       }
     };
@@ -92,6 +181,8 @@ export default function MasterpieceMe() {
     
     try {
       console.log('💾 Saving session:', updates);
+      setShowSaveNotification(true);
+      
       const response = await fetch(`${BACKEND_URL}/api/session/${sessionId}/update`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -101,11 +192,11 @@ export default function MasterpieceMe() {
       const data = await response.json();
       if (data.success) {
         console.log('✅ Session saved successfully');
-      } else {
-        console.error('❌ Session save failed:', data.error);
+        setTimeout(() => setShowSaveNotification(false), 2000);
       }
     } catch (error) {
       console.error('❌ Save error:', error);
+      setShowSaveNotification(false);
     }
   };
 
@@ -138,7 +229,6 @@ export default function MasterpieceMe() {
       const imageData = e.target.result;
       setUploadedImage(imageData);
       
-      // Create session in database
       try {
         const response = await fetch(`${BACKEND_URL}/api/create-session`, {
           method: 'POST',
@@ -150,8 +240,6 @@ export default function MasterpieceMe() {
         if (data.success) {
           setSessionId(data.sessionId);
           setCurrentStep('gender-select');
-          
-          // Update URL without reload
           window.history.pushState({}, '', `/session/${data.sessionId}`);
           console.log('✅ Session created:', data.sessionId);
         }
@@ -166,15 +254,16 @@ export default function MasterpieceMe() {
   // Select gender and start generation
   const selectGender = async (gender) => {
     setSelectedGender(gender);
-    await saveSession({ selectedGender: gender, currentArtist: 0 });
+    await saveSession({ selected_gender: gender, current_artist: 0 });
     setCurrentStep('generating');
-    generateVariations(0, gender);
+    generateVariations(0, gender, uploadedImage);
   };
 
-  // Generate variations for current artist
-  const generateVariations = async (artistIndex, gender = selectedGender) => {
+  // Generate variations
+  const generateVariations = async (artistIndex, gender = selectedGender, image = uploadedImage) => {
     setIsGenerating(true);
     setGenerationProgress(0);
+    setEstimatedTimeLeft(40);
     
     const artist = artists[artistIndex];
     const genderPrompt = gender === 'Male' ? 'male portrait' : 'female portrait';
@@ -182,20 +271,24 @@ export default function MasterpieceMe() {
     
     console.log(`🎨 Generating for ${artist.name}...`);
     
-    // Simulate progress
+    const startTime = Date.now();
+    
     const progressInterval = setInterval(() => {
-      setGenerationProgress(prev => {
-        if (prev >= 90) return 90;
-        return prev + 10;
-      });
-    }, 500);
+      const elapsed = (Date.now() - startTime) / 1000;
+      const estimatedTotal = 40;
+      const remaining = Math.max(0, Math.ceil(estimatedTotal - elapsed));
+      setEstimatedTimeLeft(remaining);
+      
+      const progress = Math.min(95, (elapsed / estimatedTotal) * 100);
+      setGenerationProgress(Math.floor(progress));
+    }, 100);
     
     try {
       const response = await fetch(`${BACKEND_URL}/api/generate-variations`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          image: uploadedImage,
+          image: image,
           artistName: artist.name,
           artistPrompt: fullPrompt,
           count: 2
@@ -207,8 +300,8 @@ export default function MasterpieceMe() {
       
       if (data.success) {
         setGenerationProgress(100);
+        setEstimatedTimeLeft(0);
         
-        // Save to history
         const newHistory = { ...variationHistory };
         if (!newHistory[artistIndex]) {
           newHistory[artistIndex] = [];
@@ -220,15 +313,14 @@ export default function MasterpieceMe() {
         setVariationHistory(newHistory);
         setHistoryIndex(newHistoryIndex);
         
-        // Update generated images
         const newGeneratedImages = { ...generatedImages, [artistIndex]: data.variations };
         setGeneratedImages(newGeneratedImages);
         
-        // Save to database
         await saveSession({
-          generatedImages: newGeneratedImages,
-          variationHistory: newHistory,
-          historyIndex: newHistoryIndex
+          generated_images: newGeneratedImages,
+          variation_history: newHistory,
+          history_index: newHistoryIndex,
+          current_artist: artistIndex
         });
         
         setTimeout(() => {
@@ -246,17 +338,16 @@ export default function MasterpieceMe() {
     }
   };
 
-  // Select variation and move to next artist
+  // Select variation
   const selectVariation = async (variation) => {
     const newSelections = { ...selectedVariations, [currentArtist]: variation };
     setSelectedVariations(newSelections);
     
     const nextArtist = currentArtist + 1;
     
-    // CRITICAL: Save to database BEFORE moving to next artist
     await saveSession({
-      selectedVariations: newSelections,
-      currentArtist: nextArtist
+      selected_variations: newSelections,
+      current_artist: nextArtist
     });
     
     if (nextArtist < 12) {
@@ -279,7 +370,7 @@ export default function MasterpieceMe() {
     const newShuffleCount = { ...shuffleCount, [currentArtist]: count + 1 };
     setShuffleCount(newShuffleCount);
     
-    await saveSession({ shuffleCount: newShuffleCount });
+    await saveSession({ shuffle_count: newShuffleCount });
     
     setCurrentStep('generating');
     generateVariations(currentArtist);
@@ -297,7 +388,7 @@ export default function MasterpieceMe() {
       const newGeneratedImages = { ...generatedImages, [currentArtist]: history[currentIdx - 1] };
       setGeneratedImages(newGeneratedImages);
       
-      saveSession({ generatedImages: newGeneratedImages, historyIndex: newIndex });
+      saveSession({ generated_images: newGeneratedImages, history_index: newIndex });
     }
   };
 
@@ -312,7 +403,7 @@ export default function MasterpieceMe() {
       const newGeneratedImages = { ...generatedImages, [currentArtist]: history[currentIdx + 1] };
       setGeneratedImages(newGeneratedImages);
       
-      saveSession({ generatedImages: newGeneratedImages, historyIndex: newIndex });
+      saveSession({ generated_images: newGeneratedImages, history_index: newIndex });
     }
   };
 
@@ -322,6 +413,13 @@ export default function MasterpieceMe() {
     navigator.clipboard.writeText(url);
     setShowCopyNotification(true);
     setTimeout(() => setShowCopyNotification(false), 2000);
+  };
+
+  // Add to cart
+  const addToCart = (product) => {
+    setCartItems([...cartItems, product]);
+    setCartTotal(cartTotal + product.price);
+    alert(`Added ${product.name} to cart!`);
   };
 
   // Checkout
@@ -362,7 +460,7 @@ export default function MasterpieceMe() {
             </span>
           </div>
           <div className="flex items-center gap-3">
-            {sessionId && currentStep !== 'home' && (
+            {sessionId && currentStep !== 'home' && currentStep !== 'success' && (
               <button
                 onClick={copyLink}
                 className="flex items-center gap-2 bg-amber-100 text-amber-800 px-4 py-2 rounded-full font-semibold hover:bg-amber-200 transition">
@@ -391,6 +489,14 @@ export default function MasterpieceMe() {
         </div>
       )}
 
+      {showSaveNotification && (
+        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 bg-blue-500 text-white px-6 py-3 rounded-full shadow-lg z-50 flex items-center gap-2">
+          <Check className="w-4 h-4" />
+          Autosaved
+        </div>
+      )}
+
+      {/* HOME */}
       {currentStep === 'home' && (
         <section className="max-w-4xl mx-auto px-4 py-20 text-center">
           <h1 className="text-6xl font-black mb-6">
@@ -431,6 +537,7 @@ export default function MasterpieceMe() {
         </section>
       )}
 
+      {/* GENDER SELECT */}
       {currentStep === 'gender-select' && (
         <section className="max-w-4xl mx-auto px-4 py-20">
           <div className="text-center mb-12">
@@ -466,6 +573,7 @@ export default function MasterpieceMe() {
         </section>
       )}
 
+      {/* GENERATING */}
       {currentStep === 'generating' && (
         <section className="max-w-4xl mx-auto px-4 py-20">
           <div className="text-center">
@@ -478,12 +586,19 @@ export default function MasterpieceMe() {
             <div className="max-w-md mx-auto mb-4">
               <div className="bg-gray-200 rounded-full h-4 overflow-hidden">
                 <div
-                  className="bg-gradient-to-r from-amber-500 to-red-500 h-full transition-all duration-500"
+                  className="bg-gradient-to-r from-amber-500 to-red-500 h-full transition-all duration-300"
                   style={{ width: `${generationProgress}%` }}
                 />
               </div>
             </div>
-            <p className="text-sm text-gray-500">{generationProgress}%</p>
+            <p className="text-sm text-gray-500 mb-4">{generationProgress}%</p>
+            
+            {estimatedTimeLeft > 0 && (
+              <div className="flex items-center justify-center gap-2 text-gray-600 mb-6">
+                <Clock className="w-4 h-4" />
+                <span>{estimatedTimeLeft} seconds remaining</span>
+              </div>
+            )}
             
             <div className="mt-8 bg-white rounded-xl p-4 inline-block">
               <span className="font-bold text-amber-600">
@@ -494,6 +609,7 @@ export default function MasterpieceMe() {
         </section>
       )}
 
+      {/* SELECT VARIATION */}
       {currentStep === 'select-variation' && (
         <section className="max-w-6xl mx-auto px-4 py-20">
           <div className="text-center mb-8">
@@ -570,6 +686,7 @@ export default function MasterpieceMe() {
         </section>
       )}
 
+      {/* PREVIEW WITH BOOK VIEWER */}
       {currentStep === 'preview' && (
         <section className="max-w-7xl mx-auto px-4 py-20">
           <div className="text-center mb-12">
@@ -579,7 +696,8 @@ export default function MasterpieceMe() {
             </p>
           </div>
 
-          <div className="grid grid-cols-3 md:grid-cols-4 gap-6 mb-12">
+          {/* Grid Preview */}
+          <div className="grid grid-cols-3 md:grid-cols-4 gap-6 mb-16">
             {Object.entries(selectedVariations).map(([artistIdx, variation]) => {
               const artist = artists[parseInt(artistIdx)];
               return (
@@ -596,7 +714,45 @@ export default function MasterpieceMe() {
             })}
           </div>
 
-          <div className="max-w-md mx-auto bg-white rounded-3xl p-8 shadow-xl">
+          {/* Book Preview */}
+          <div className="mb-16">
+            <h3 className="text-3xl font-bold text-center mb-8">📖 Book Preview</h3>
+            <div className="max-w-2xl mx-auto">
+              <div className="bg-white rounded-2xl shadow-2xl p-8">
+                {selectedVariations[currentBookPage] && (
+                  <>
+                    <img 
+                      src={selectedVariations[currentBookPage].url} 
+                      alt={`Page ${currentBookPage + 1}`}
+                      className="w-full h-96 object-cover rounded-lg mb-4"
+                    />
+                    <div className="text-center">
+                      <p className="text-2xl font-bold mb-2">{artists[currentBookPage].name}</p>
+                      <p className="text-gray-600">{artists[currentBookPage].period}</p>
+                      <p className="text-sm text-gray-500 mt-2">Page {currentBookPage + 1} of 12</p>
+                    </div>
+                  </>
+                )}
+              </div>
+              <div className="flex justify-between items-center mt-6">
+                <button 
+                  onClick={() => setCurrentBookPage(Math.max(0, currentBookPage - 1))}
+                  disabled={currentBookPage === 0}
+                  className={`flex items-center gap-2 px-6 py-3 rounded-full font-semibold ${currentBookPage === 0 ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-amber-600 text-white hover:bg-amber-700'}`}>
+                  <ChevronLeft className="w-5 h-5" /> Previous
+                </button>
+                <button 
+                  onClick={() => setCurrentBookPage(Math.min(11, currentBookPage + 1))}
+                  disabled={currentBookPage === 11}
+                  className={`flex items-center gap-2 px-6 py-3 rounded-full font-semibold ${currentBookPage === 11 ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-amber-600 text-white hover:bg-amber-700'}`}>
+                  Next <ChevronRight className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Order Summary */}
+          <div className="max-w-md mx-auto bg-white rounded-3xl p-8 shadow-xl mb-8">
             <h3 className="text-2xl font-bold mb-6 text-center">Order Summary</h3>
             <div className="space-y-4 mb-6">
               <div className="flex justify-between py-3 border-b">
@@ -613,9 +769,149 @@ export default function MasterpieceMe() {
               </div>
             </div>
             <button
-              onClick={handleCheckout}
+              onClick={() => setCurrentStep('upsells')}
               className="w-full bg-gradient-to-r from-amber-600 to-red-600 text-white py-4 rounded-full font-bold hover:shadow-xl transition">
-              Proceed to Checkout
+              Continue to Add-Ons →
+            </button>
+          </div>
+        </section>
+      )}
+
+      {/* UPSELLS */}
+      {currentStep === 'upsells' && (
+        <section className="max-w-6xl mx-auto px-4 py-20">
+          <div className="text-center mb-12">
+            <h2 className="text-5xl font-bold mb-4">🎁 Make It Extra Special!</h2>
+            <p className="text-2xl text-gray-600 mb-2">Add premium products featuring your artwork</p>
+          </div>
+
+          <div className="space-y-6 mb-12">
+            {upsellProducts.map((product, idx) => (
+              <div key={idx} className={`bg-gradient-to-r ${product.color} rounded-2xl p-8 border-2 ${product.borderColor} transition hover:shadow-xl`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <div className="text-5xl mb-3">{product.emoji}</div>
+                    <h3 className="text-2xl font-bold mb-2">{product.name}</h3>
+                    <p className="text-gray-600 mb-4">{product.description}</p>
+                    <ul className="space-y-2 text-sm">
+                      {product.features.map((feature, i) => (
+                        <li key={i}>✓ {feature}</li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div className="text-right ml-8">
+                    {product.originalPrice && (
+                      <div className="text-sm text-gray-500 line-through mb-1">${product.originalPrice}</div>
+                    )}
+                    <div className="text-4xl font-bold text-gray-900 mb-3">${product.price}</div>
+                    <button onClick={() => addToCart(product)} className={`${product.buttonColor} text-white px-8 py-3 rounded-full font-bold transition`}>
+                      Add to Order
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Cart Summary */}
+          <div className="bg-white rounded-2xl p-8 mb-8 shadow-xl">
+            <h3 className="text-xl font-bold mb-4 text-center">Your Cart</h3>
+            <div className="space-y-2 mb-4">
+              <div className="flex justify-between py-2 border-b">
+                <span>12-Page Masterpiece Book</span>
+                <span className="font-bold">$49.99</span>
+              </div>
+              {cartItems.map((item, idx) => (
+                <div key={idx} className="flex justify-between text-green-600 py-2">
+                  <span>+ {item.name}</span>
+                  <span className="font-bold">${item.price.toFixed(2)}</span>
+                </div>
+              ))}
+              <div className="flex justify-between py-4 bg-amber-50 rounded-xl px-4 mt-4">
+                <span className="text-xl font-bold">Total:</span>
+                <span className="text-3xl font-bold text-amber-600">${cartTotal.toFixed(2)}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="text-center space-y-4">
+            <button onClick={handleCheckout} className="w-full max-w-md bg-gradient-to-r from-amber-600 to-red-600 text-white py-5 rounded-full font-bold text-xl hover:shadow-xl transition">
+              Proceed to Secure Checkout →
+            </button>
+            <button onClick={handleCheckout} className="text-gray-600 hover:text-gray-800 text-sm">
+              No thanks, continue with just the book
+            </button>
+          </div>
+        </section>
+      )}
+
+      {/* SUCCESS PAGE */}
+      {currentStep === 'success' && (
+        <section className="max-w-4xl mx-auto px-4 py-20">
+          <div className="bg-white rounded-3xl p-12 shadow-2xl text-center">
+            <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <Check className="w-12 h-12 text-green-600" />
+            </div>
+            
+            <h1 className="text-5xl font-bold mb-4">Order Confirmed! 🎉</h1>
+            <p className="text-2xl text-gray-600 mb-8">Thank you for your purchase!</p>
+            
+            <div className="bg-amber-50 rounded-2xl p-6 mb-8">
+              <p className="text-sm text-gray-600 mb-2">Order Number</p>
+              <p className="text-3xl font-bold text-amber-600">{orderNumber}</p>
+            </div>
+
+            <div className="bg-gray-50 rounded-2xl p-6 mb-8 text-left">
+              <h3 className="text-xl font-bold mb-4">What happens next?</h3>
+              <div className="space-y-4">
+                <div className="flex gap-4">
+                  <div className="w-8 h-8 bg-amber-600 text-white rounded-full flex items-center justify-center flex-shrink-0">1</div>
+                  <div>
+                    <p className="font-semibold">Confirmation Email Sent</p>
+                    <p className="text-sm text-gray-600">Check your inbox for order details</p>
+                  </div>
+                </div>
+                <div className="flex gap-4">
+                  <div className="w-8 h-8 bg-amber-600 text-white rounded-full flex items-center justify-center flex-shrink-0">2</div>
+                  <div>
+                    <p className="font-semibold">Book Production Begins</p>
+                    <p className="text-sm text-gray-600">Your custom book will be printed with premium quality</p>
+                  </div>
+                </div>
+                <div className="flex gap-4">
+                  <div className="w-8 h-8 bg-amber-600 text-white rounded-full flex items-center justify-center flex-shrink-0">3</div>
+                  <div>
+                    <p className="font-semibold">Ships Within 5-7 Business Days</p>
+                    <p className="text-sm text-gray-600">You'll receive tracking information via email</p>
+                  </div>
+                </div>
+                <div className="flex gap-4">
+                  <div className="w-8 h-8 bg-amber-600 text-white rounded-full flex items-center justify-center flex-shrink-0">4</div>
+                  <div>
+                    <p className="font-semibold">Delivered to Your Door</p>
+                    <p className="text-sm text-gray-600">Free shipping included!</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t pt-6">
+              <p className="text-gray-600 mb-6">Questions about your order?</p>
+              <p className="text-sm text-gray-500">Contact us at support@masterpieceme.com</p>
+            </div>
+
+            <button 
+              onClick={() => { 
+                setCurrentStep('home'); 
+                setUploadedImage(null);
+                setSessionId(null);
+                setCartItems([]);
+                setCartTotal(49.99);
+                window.history.pushState({}, '', '/'); 
+              }} 
+              className="mt-8 bg-gradient-to-r from-amber-600 to-red-600 text-white px-12 py-4 rounded-full font-bold hover:shadow-xl transition">
+              Create Another Book
             </button>
           </div>
         </section>
