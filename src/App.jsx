@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Upload, ArrowRight, Check, Loader, Copy, Home, Undo, Redo, Clock, ChevronLeft, ChevronRight, X, Mail, Phone } from 'lucide-react';
+import { Upload, ArrowRight, Check, Loader, Copy, Home, Undo, Redo, Clock, ChevronLeft, ChevronRight, X, Mail, Phone, Edit2 } from 'lucide-react';
 import { Turnstile } from '@marsidev/react-turnstile';
+import CoverTypeSelector from './components/CoverTypeSelector';
 
 const BACKEND_URL = 'https://cartoonme-backend.onrender.com';
 const CLOUDFLARE_SITE_KEY = '0x4AAAAAAB6No5gcHaleduBl';
@@ -8,12 +9,17 @@ const CLOUDFLARE_SITE_KEY = '0x4AAAAAAB6No5gcHaleduBl';
 export default function MasterpieceMe() {
   const [currentStep, setCurrentStep] = useState('home');
   const [uploadedImage, setUploadedImage] = useState(null);
+  const [coverType, setCoverType] = useState('hardcover');
+  const [coverColor, setCoverColor] = useState('pink');
+  const [price, setPrice] = useState(49.99);
   const [sessionId, setSessionId] = useState(null);
   const [selectedGender, setSelectedGender] = useState(null);
   const [currentArtist, setCurrentArtist] = useState(0);
   const [generatedImages, setGeneratedImages] = useState({});
   const [selectedVariations, setSelectedVariations] = useState({});
   const [isGenerating, setIsGenerating] = useState(false);
+  const [batchGenerating, setBatchGenerating] = useState(false);
+  const [batchProgress, setBatchProgress] = useState(0);
   const [generationProgress, setGenerationProgress] = useState(0);
   const [shuffleCount, setShuffleCount] = useState({});
   const [variationHistory, setVariationHistory] = useState({});
@@ -23,13 +29,9 @@ export default function MasterpieceMe() {
   const [showSaveNotification, setShowSaveNotification] = useState(false);
   const [estimatedTimeLeft, setEstimatedTimeLeft] = useState(40);
   const [isSessionLoading, setIsSessionLoading] = useState(false);
-  const [cartItems, setCartItems] = useState([]);
-  const [cartTotal, setCartTotal] = useState(49.99);
   const [orderNumber, setOrderNumber] = useState(null);
   const [currentBookPage, setCurrentBookPage] = useState(0);
   const [captchaToken, setCaptchaToken] = useState(null);
-  const [showImageSelector, setShowImageSelector] = useState(false);
-  const [selectedProductForImage, setSelectedProductForImage] = useState(null);
   const [verificationStep, setVerificationStep] = useState('input');
   const [contactMethod, setContactMethod] = useState('email');
   const [verificationCode, setVerificationCode] = useState(['', '', '', '', '', '']);
@@ -37,136 +39,111 @@ export default function MasterpieceMe() {
   const [isVerifying, setIsVerifying] = useState(false);
   const [customerName, setCustomerName] = useState('');
   const [dedication, setDedication] = useState('');
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [selectedModalImage, setSelectedModalImage] = useState(null);
+  const [showEditDedication, setShowEditDedication] = useState(false);
+  const [editedDedication, setEditedDedication] = useState('');
+  const [showArtistModal, setShowArtistModal] = useState(false);
+  const [selectedArtistForChange, setSelectedArtistForChange] = useState(null);
   const codeInputRefs = useRef([]);
+
+  const colorOptions = [
+    { name: 'pink', bg: 'bg-pink-500', label: 'Hot Pink' },
+    { name: 'teal', bg: 'bg-teal-500', label: 'Teal' },
+    { name: 'blue', bg: 'bg-blue-500', label: 'Bright Blue' },
+    { name: 'gray', bg: 'bg-gray-700', label: 'Dark Gray' }
+  ];
 
   const artists = [
     { 
       name: 'Leonardo da Vinci', 
       period: 'Renaissance',
-      malePrompt: 'Renaissance portrait in the style of Leonardo da Vinci\'s Portrait of a Man in Red Chalk, characterized by masterful red-chalk rendering and delicate anatomical precision. The masculine features display calm introspection, strong bone structure, and a serene intellect. Warm terracotta and soft sanguine tones define the drawing\'s lifelike shading, with gentle sfumato transitions enhancing form and volume. The work evokes quiet dignity and philosophical depth, capturing the spirit of human thought through Leonardo\'s meticulous study of proportion, subtle modeling, and naturalistic linework.',
-      femalePrompt: 'Renaissance portrait in the style of Leonardo da Vinci\'s Mona Lisa, featuring soft feminine features with delicate sfumato technique, subtle enigmatic smile, serene and mysterious expression, warm golden-brown earth tones, misty atmospheric landscape background, three-quarter view, oil painting on poplar wood, smooth transitions and invisible brushstrokes, contemplative and timeless mood, elegant Renaissance female dress, luminous skin tones with delicate glazes, capturing inner grace and sophistication'
+      malePrompt: 'Renaissance portrait characterized by masterful sfumato and divine serenity. Masculine figure in three-quarter view with solemn blessed expression, one hand raised with two fingers extended in gesture of benediction, the other hand holding crystalline orb. Refined noble features with contemplative gaze. Rich blue robes with intricate gold embroidery and red undergarment visible. Warm golden-brown atmospheric tones, luminous skin rendered with delicate glazing. Dark background with subtle gradations, imperceptible brushwork creating smooth transitions. Capturing spiritual authority and Renaissance ideals of human divinity through anatomical precision and psychological depth. Preserve original eyewear if present, do not add or remove glasses. Maintain original facial hair style exactly as it appears, do not add or remove facial hair. Maintain original hair length exactly as it appears.',
+      femalePrompt: 'Renaissance portrait featuring a single feminine subject with soft delicate sfumato technique, subtle enigmatic smile with mysterious knowing expression. Warm golden-brown earth tones, hands delicately folded or crossed in contemplative pose. Misty atmospheric landscape background with winding paths and distant mountains, three-quarter view revealing elegant posture. Oil painting with imperceptibly smooth transitions and invisible brushstrokes, dark draped dress with fine pleating details. Veil or translucent head covering, luminous porcelain skin tones with delicate glazes. Contemplative timeless mood capturing inner grace, psychological depth, and sophisticated Renaissance femininity. Only one female figure present in composition. Preserve original eyewear if present, do not add or remove glasses. Maintain original hair length exactly as it appears.',
+      petPrompt: 'Renaissance portrait of a pet (dog, cat, bird, or reptile) in a noble, serene pose, rendered with masterful sfumato. The pet has an enigmatic, almost human-like expression and is adorned with a delicate Renaissance-style collar or small jeweled pendant. A misty, atmospheric landscape with winding paths and distant mountains forms the background. The fur/feathers/scales are depicted with luminous, soft transitions and meticulous detail, capturing the pet\'s inner grace and dignity. Oil painting with imperceptible brushstrokes, warm golden-brown earth tones, and delicate glazing. The pet should embody Renaissance ideals of elegance and contemplation.'
     },
     { 
       name: 'Michelangelo', 
       period: 'Renaissance',
-      malePrompt: 'Renaissance portrait inspired by Michelangelo\'s David, translated from marble sculpture to painting with monumental intensity. The male figure embodies idealized beauty and heroic anatomy, with chiseled musculature and divine composure. Strong chiaroscuro emphasizes the sculptural modeling of the face and shoulders, revealing every tension and contour of flesh and form. A palette of marble whites, warm stone, and terracotta hues evokes the monumental presence of the statue, radiating timeless strength and spiritual nobility, merging classical perfection with Renaissance grandeur.',
-      femalePrompt: 'Renaissance portrait inspired by Michelangelo\'s female figure studies, idealized feminine anatomy with graceful and statuesque presence, soft yet powerful features, marble-like skin quality, gentle chiaroscuro, flowing drapery, monumental yet delicate composition, classical Roman influence, soft terracotta and cream tones, elegant painterly sculptural quality, timeless feminine grace, Renaissance-inspired attire, serene and poised expression'
+      malePrompt: 'Create a full-body marble statue of the man from the original image, in a classical pose, located in a grand museum hall. The statue, including the head, should be made of white marble and faithfully retain his facial features, including his glasses if present, his beard/stubble, and his hairstyle. He should be adorned with simple, draped classical robes covering his lower body, leaving his chest and arms exposed. The lighting should evoke a serene museum atmosphere, highlighting the marble texture and form.',
+      femalePrompt: 'Renaissance portrait with idealized feminine beauty in sacred monumental style, powerful graceful features with classical proportions and sculptural presence. Flowing robes and gathered drapery in rich earth tones of terracotta, deep azure blues, warm ochres, and sage greens. Surrounded by celestial elements - soft-winged cherubic putti, swirling heavenly clouds, painted architectural framework with coffered vaults. Seated or reclining pose with turned contrapposto torso, one arm extended in graceful gesture. Strong chiaroscuro creates dramatic divine illumination, expression blending tender maternal warmth with spiritual authority. Monumental fresco-like composition with vibrant colors and bold sculptural forms. Only one female figure present in composition. Preserve original eyewear if present, do not add or remove glasses. Maintain original hair length exactly as it appears.',
+      petPrompt: 'A majestic full-body marble statue of the pet (dog, cat, bird, or reptile) in a classical, heroic pose, located in a grand museum hall. The statue should faithfully capture the pet\'s unique features, rendered in pristine white marble with exquisite detail, embodying idealized classical form and monumental presence. The pet is sculpted with a dignified, almost human-like expression. Simple, elegant classical drapery is artfully arranged around the pet, enhancing its heroic bearing. The lighting evokes a serene museum atmosphere, highlighting the luminous marble texture and sculptural form. The pet becomes a timeless work of art, similar to Michelangelo\'s masterpieces.'
     },
     { 
       name: 'Raphael', 
       period: 'High Renaissance',
-      malePrompt: 'High Renaissance portrait in the refined manner of Raphael\'s Portrait of Baldassare Castiglione, featuring balanced harmony and noble restraint. The subject\'s masculine features convey intelligence and calm confidence, framed by soft chiaroscuro and a luminous warm tone. Subtle brushwork and a limited palette of blacks, creams, and warm flesh tones create elegant simplicity. The figure sits in poised three-quarter view, radiating cultivated dignity and introspection, encapsulating Raphael\'s ideal of human grace and classical serenity.',
-      femalePrompt: 'High Renaissance portrait in the style of Raphael\'s La Donna Velata and Portrait of Maddalena Doni, soft feminine beauty with perfect classical proportions, serene expression with gentle gaze, luminous fair skin with warm flesh tones, elegant three-quarter pose, balanced harmonious composition, Renaissance female fashion with delicate fabrics and jewels, oil on canvas with refined brushwork, idealized grace and dignity, capturing timeless feminine elegance'
+      malePrompt: 'High Renaissance portrait in the refined manner of Raphael\'s Portrait of Baldassare Castiglione, featuring balanced harmony and noble restraint. The subject\'s masculine features convey intelligence and calm confidence, framed by soft chiaroscuro and a luminous warm tone. The subject is wearing the elegant attire of a Renaissance courtier: a dark doublet with a trim of grey-brown squirrel fur, a bloused creamy-white shirt visible at the chest, and a black beret atop a simple turban-style cap. Subtle brushwork and a limited palette of blacks, creams, warm flesh tones, and muted greys create elegant simplicity. The figure sits in poised three-quarter view, radiating cultivated dignity and introspection, encapsulating Raphael\'s ideal of human grace and classical serenity.',
+      femalePrompt: 'High Renaissance portrait with soft luminous feminine beauty and perfect classical proportions. Subject in elegant three-quarter pose wearing sumptuous Renaissance gown with puffed sleeves, rich fabrics of silk and velvet in warm earth tones. Delicate jewelry - pearl necklace, rings, or ornate headdress with translucent veil. One hand delicately positioned near chest or holding small object, displaying graceful fingers. Serene expression with gentle direct gaze, porcelain skin with warm rosy undertones. Balanced harmonious composition with architectural elements or soft landscape background. Refined invisible brushwork, luminous glazing technique, capturing idealized feminine virtue, dignity, and timeless Renaissance elegance. Only one female figure present in composition. Preserve original eyewear if present, do not add or remove glasses. Maintain original hair length exactly as it appears.',
+      petPrompt: 'High Renaissance portrait of a pet (dog, cat, bird, or reptile) in the elegant style of Raphael, inspired by noble human portraits. The pet is in a refined three-quarter view, with dignified bearing and an intelligent, gentle expression. It wears a miniature, richly embroidered Renaissance-style collar or cap. The background features a harmonious landscape with soft lighting. The pet\'s fur/feathers/scales are rendered with refined, smooth brushwork, emphasizing luminous and balanced forms, evoking a sense of aristocratic grace and classical composition.'
     },
     { 
       name: 'Rembrandt', 
       period: 'Baroque',
-      malePrompt: 'Baroque portrait in the dramatic style of Rembrandt\'s Self-Portrait, depicting the mature artist\'s mastery of light and introspection. The masculine visage emerges from deep shadow, bathed in warm amber and golden tones. Thick impasto brushwork and layered glazes reveal every crease and contour of age, expressing profound psychological depth. A single light source illuminates the face against a dark, velvety backdrop, emphasizing wisdom, humility, and life experience — a timeless study in self-awareness and the passage of time.',
-      femalePrompt: 'Baroque portrait in the dramatic style of Rembrandt, inspired by Portrait of Saskia, soft feminine features illuminated by warm golden light, tender gaze and gentle expression, rich jewel tones with deep reds and golds, soft shadows with luminous highlights, intimate and emotional atmosphere, layered oil painting technique with subtle glazing, elegant luxurious fabrics, conveying warmth, sensitivity, and graceful maturity'
+      malePrompt: 'Baroque portrait depicting mastery of light and introspection with dramatic chiaroscuro. The masculine figure wears rich period costume - velvet cap or beret, fur-trimmed robes, ornate gold chain across chest. Emerging from deep shadow, bathed in warm amber and golden tones from single light source. Thick impasto brushwork and layered glazes reveal every crease and contour, weathered hands visible holding painter\'s tools or resting contemplatively. Dark velvety backdrop emphasizes the illuminated face and costume details, capturing profound psychological depth, wisdom, and life experience through masterful play of light and shadow. Preserve original eyewear if present, do not add or remove glasses. Maintain original facial hair style exactly as it appears, do not add or remove facial hair.',
+      femalePrompt: 'Baroque portrait with soft feminine features illuminated by warm golden light from single window source. Subject adorned in sumptuous fabrics - rich brocade dress, fur trim, pearl necklaces and jewelry catching the light. Tender gaze with gentle introspective expression, perhaps holding flowers or wearing elaborate headdress with feathers. Rich jewel tones of deep crimson, amber gold, and warm browns create intimate atmosphere. Soft shadows with luminous highlights on silk and velvet textures, layered oil painting technique with subtle glazing. Luxurious period costume details emerge from darkness, conveying warmth, domestic intimacy, and graceful humanity. Only one female figure present in composition. Preserve original eyewear if present, do not add or remove glasses. Maintain original hair length exactly as it appears.',
+      petPrompt: 'Baroque portrait of a pet (dog, cat, bird, or reptile) in the dramatic chiaroscuro style of Rembrandt. The pet emerges from deep shadows, bathed in a warm, golden light from a single source, highlighting its fur/feathers/scales with rich amber and brown tones. The pet has an introspective, wise expression, conveying psychological depth. Visible impasto brushwork and thick layered paint application emphasize the texture of its coat or plumage, giving it a dignified, almost aged presence. The dark, velvety background further accentuates the dramatic lighting.'
     },
     { 
       name: 'Johannes Vermeer', 
       period: 'Dutch Golden Age',
-      malePrompt: 'Dutch Golden Age portrait inspired by Vermeer\'s The Glass of Wine, combining luminous domestic light with contemplative atmosphere. The masculine subject, rendered with crystalline precision, sits in soft daylight near a window, bathed in natural illumination that highlights rich fabrics and refined details. Pearl-like highlights and harmonious composition create serenity within an intimate interior. The scene conveys stillness and quiet dignity, embodying Vermeer\'s mastery of light, texture, and psychological nuance.',
-      femalePrompt: 'Dutch Golden Age portrait in the luminous style of Vermeer, inspired by Girl with a Pearl Earring, soft feminine features with calm contemplative expression, mysterious subtle smile, diffused natural window light, pearl-like luminosity on skin, delicate sfumato transitions, intimate domestic interior, detailed period female attire, refined invisible brushwork, harmonious composition, serene timeless beauty, emphasizing gentle elegance and quiet intimacy'
+      malePrompt: 'Dutch Golden Age portrait of a single masculine subject combining luminous domestic light with contemplative atmosphere. The man, rendered with crystalline precision, sits alone near a window bathed in soft daylight that spills across rich fabrics and wooden textures. Wearing period gentleman\'s attire with white collar and dark jacket. Refined brushwork, harmonious composition, and pearl-like highlights create serenity within an intimate interior. The scene conveys both stillness and quiet narrative tension, embodying mastery of light, texture, and psychological nuance. Only one male figure present in the composition. Preserve original eyewear if present, do not add or remove glasses. Maintain original facial hair style exactly as it appears, do not add or remove facial hair.',
+      femalePrompt: 'Dutch Golden Age portrait of a single feminine subject, a close-up three-quarter view with a gentle expression and direct gaze, wearing a simple yellow and blue turban and a large pearl earring. The background is a flat, very dark, indeterminate tone. The light is diffused, coming from the upper left, highlighting the porcelain skin and the textures of the fabric. The overall style embodies the pearl-like luminosity, refined invisible brushwork, and psychological intimacy of Johannes Vermeer\'s \'Girl with a Pearl Earring\'. Only one female figure present in the composition. Preserve original eyewear if present, do not add or remove glasses. Maintain original hair length exactly as it appears.',
+      petPrompt: 'Dutch Golden Age portrait of the pet (dog, cat, bird, or reptile) as the "Girl with a Pearl Earring" by Vermeer. The pet is shown in a close-up, three-quarter view, with its head turned to gaze directly at the viewer. It wears a characteristic blue and yellow draped head covering and a prominent pearl earring (or a pet-appropriate substitute like a small, shining charm). The background is a flat, very dark, indeterminate tone, and the pet\'s fur/feathers/scales are rendered with crystalline clarity and pearl-like luminosity, emphasizing soft diffused light. The overall effect is both iconic and whimsical, capturing the pet\'s charm in a masterfully intimate style.'
     },
     { 
       name: 'Claude Monet', 
       period: 'Impressionism',
-      malePrompt: 'Impressionist portrait in the radiant style of Claude Monet\'s Portrait of Gustave Caillebotte, set against the vibrant seaside light of Jardin à Sainte-Adresse. The masculine figure is captured in natural sunlight with flickering brushstrokes and broken color. Loose painterly marks merge blues, ochres, and greens into a shimmering atmospheric unity. The background evokes an airy coastal breeze and luminous sky, blending figure and nature in a symphony of color and movement, full of spontaneity and plein-air vitality.',
-      femalePrompt: 'Impressionist portrait in the style of Claude Monet, inspired by Camille Monet, soft feminine features captured in natural sunlight, loose delicate brushstrokes, vibrant impressionistic colors with pinks, purples, and yellows, light filtering through fabric or flowers, outdoor garden or water lilies background, atmospheric dreamy effect, fleeting moment captured in motion, airy and light-filled composition, impressionistic spontaneity, emphasizing feminine grace in nature'
+      malePrompt: 'Impressionist portrait set against vibrant seaside light and coastal gardens. The masculine figure is captured in natural sunlight with flickering brushstrokes and broken color. Loose painterly marks merge blues, ochres, and greens into shimmering atmospheric unity. The background evokes an airy coastal breeze and luminous sky, blending figure and nature in a symphony of color and movement, full of spontaneity and plein-air vitality. Preserve original eyewear if present, do not add or remove glasses. Maintain original facial hair style exactly as it appears, do not add or remove facial hair.',
+      femalePrompt: 'Impressionist portrait with soft feminine features captured in natural sunlight, loose delicate brushstrokes, vibrant impressionistic colors with pinks, purples, and yellows, light filtering through fabric or flowers, outdoor garden or water lilies background, atmospheric dreamy effect, fleeting moment captured in motion, airy and light-filled composition, impressionistic spontaneity, emphasizing feminine grace in nature. Only one female figure present in composition. Preserve original eyewear if present, do not add or remove glasses. Maintain original hair length exactly as it appears.',
+      petPrompt: 'Impressionist portrait of a pet (dog, cat, bird, or reptile) basking in dappled sunlight within a vibrant outdoor garden or water lilies setting. The pet\'s fur/feathers/scales are rendered with loose, energetic brushstrokes and broken color, shimmering with blues, greens, and golden ochres. The background is an atmospheric, luminous blend of flowers, foliage, and perhaps shimmering water, creating a spontaneous and airy plein-air quality. The composition emphasizes light, color, and movement, capturing the pet\'s playful or serene presence in a natural, fleeting moment.'
     },
     { 
       name: 'Vincent van Gogh', 
       period: 'Post-Impressionism',
-      malePrompt: 'Post-Impressionist portrait in the expressive style of Van Gogh\'s Self-Portrait, with swirling energetic background inspired by Starry Night, thick impasto brushstrokes creating three-dimensional texture. The masculine features are rendered with bold confident strokes, intense penetrating gaze filled with emotional depth. Vibrant color palette with cobalt blues, chrome yellows, and emerald greens radiates dynamic energy. Heavily textured paint application with characteristic Van Gogh technique, capturing both psychological intensity and expressive power through visible passionate brushwork.',
-      femalePrompt: 'Post-Impressionist portrait in the expressive style of Van Gogh, inspired by Portrait of Adeline Ravoux, with swirling energetic background inspired by Starry Night, thick impasto brushstrokes creating rich texture. Soft feminine features with emotional depth and tender expression, vibrant colors of warm peaches, gentle blues, and yellows. Visible energetic paint application with characteristic Van Gogh texture, capturing inner warmth and sensitivity through expressive lively brushwork and radiating movement.'
+      malePrompt: 'Post-Impressionist portrait in the intense style of Vincent van Gogh, inspired by his male self-portraits from 1889, thick impasto brushstrokes with three-dimensional texture, masculine features with strong character, intense penetrating gaze with psychological depth, swirling energetic movement in background, vibrant color palette with cobalt blues, chrome yellows, and emerald greens, visible heavy paint application, expressive gestural brushwork, raw emotional intensity, textured surface with thick pigment, radiating energy lines, characteristic Van Gogh turbulent style, Starry Night background.',
+      femalePrompt: 'Post-Impressionist portrait with soft feminine features and emotional depth, thick impasto brushstrokes with heavily textured surface. Swirling Starry Night background with characteristic spiral patterns in deep blues and vibrant yellows, crescent moon and radiating stars in circular swirling motions, night sky with cypress silhouettes or village elements in distance. Vibrant colors of warm peaches in facial tones contrasting with cosmic blues and golden yellows, intense yet tender expression. Visible energetic paint application with distinctive circular brushwork patterns, capturing inner emotion and feminine warmth within celestial setting, expressive and lively composition with iconic swirling night sky energy. Only one female figure present in composition. Preserve original eyewear if present, do not add or remove glasses. Maintain original hair length exactly as it appears.',
+      petPrompt: 'Post-Impressionist portrait of a pet (dog, cat, bird, or reptile) in the intense, textured style of Vincent van Gogh, set against a dramatic, swirling Starry Night background. The pet\'s fur/feathers/scales are depicted with thick impasto brushstrokes and three-dimensional texture, conveying a vivid energy. The iconic swirling patterns of deep blues, vibrant yellows, and whites of the night sky, complete with a crescent moon and stars, engulf the background. The pet\'s expression is intense and full of character, rendered with visible, energetic paint application, blending its form with the turbulent, radiant energy of the cosmic landscape.'
     },
     { 
       name: 'Edvard Munch', 
       period: 'Expressionism',
-      malePrompt: 'Expressionist portrait in the psychological style of Edvard Munch, maintaining recognizable masculine features while conveying emotional intensity. Strong angular bone structure with introspective expression, painted with expressive gestural brushstrokes. The background features flowing atmospheric movement with deep reds and moody blues suggesting psychological depth. Fluid lines and bold color create emotional resonance without extreme distortion. The composition captures inner contemplation and existential mood through Munch\'s characteristic symbolic expressionism, balancing realism with emotional power.',
-      femalePrompt: 'Expressionist portrait in the emotional style of Edvard Munch, inspired by Madonna, soft but expressive feminine features with recognizable beauty, introspective or melancholic expression, flowing sensual lines, atmospheric background with emotional movement, bold colors with deep reds and mysterious greens, gestural brushwork, dreamlike and symbolic composition, conveying feminine vulnerability and psychological complexity, haunting yet captivating presence with preserved facial clarity'
+      malePrompt: 'Expressionist portrait in illustrated caricature style with exaggerated emotional distortion. The male figure\'s face rendered with simplified bold lines, elongated oval head shape, hands raised to sides of face in gesture of existential dread. Mouth open in silent expression of anguish, eyes wide with psychological terror. Fluid wavy brushstrokes throughout, swirling sky background of vivid crimson, burnt orange, and deep indigo streaks. Bridge or railing setting with diagonal perspective lines. Stylized almost cartoon-like simplification while maintaining raw emotional power. Bold unnatural colors, warped flowing forms, gestural visible brushwork. The composition captures primal fear and vulnerability through graphic symbolic intensity and expressive distortion. Preserve original eyewear if present, do not add or remove glasses. Maintain original facial hair style exactly as it appears, do not add or remove facial hair.',
+      femalePrompt: 'Expressionist portrait in illustrated caricature style with exaggerated emotional distortion. The female figure\'s face rendered with simplified bold lines, elongated oval head shape, hands raised to sides of face in gesture of existential dread. Mouth open in silent expression of anguish, eyes wide with psychological terror. Fluid wavy brushstrokes throughout, swirling sky background of vivid crimson, burnt orange, and deep indigo streaks. Bridge or railing setting with diagonal perspective lines. Stylized almost cartoon-like simplification while maintaining raw emotional power. Bold unnatural colors, warped flowing forms, gestural visible brushwork. The composition captures primal fear and vulnerability through graphic symbolic intensity and expressive distortion. Preserve original eyewear if present, do not add or remove glasses. Maintain original hair length exactly as it appears.',
+      petPrompt: 'Expressionist portrait of a pet (dog, cat, bird, or reptile) in a dramatic, illustrated caricature style, embodying a comically exaggerated emotional distortion. The pet\'s face is rendered with simplified, bold lines, and its paws (or wings/limbs) are raised to the sides of its head in a gesture of existential dread or comical panic. Its mouth is open in a silent "scream" or exaggerated howl, eyes wide with humorous terror. The background features fluid, wavy brushstrokes depicting a swirling sky of vivid crimson, burnt orange, and deep indigo streaks, with a bridge or railing setting. The stylized, almost cartoon-like simplification amplifies the primal, yet comical, fear and vulnerability through graphic intensity and expressive distortion.'
     },
     { 
       name: 'Pablo Picasso', 
       period: 'Cubism',
-      malePrompt: 'Cubist portrait inspired by Picasso\'s Portrait of Ambroise Vollard, reimagined through overlapping geometric planes and analytical structure. Masculine features are fragmented into angular facets and multiple viewpoints, revealing intellect and form simultaneously. Ochres, muted grays, and warm earth tones create depth without illusion. The composition balances abstraction and identity — a deconstruction of the human face into architecture, rhythm, and balance, expressing modern masculine thought through geometric harmony.',
-      femalePrompt: 'Cubist portrait in the revolutionary style of Picasso, inspired by female subjects in Les Demoiselles d\'Avignon, fragmented geometric planes revealing feminine features, multiple viewpoints simultaneously, angular and soft curves combined, deconstructed yet elegant composition, monochromatic palette with subtle ochres, pinks, and grays, flattened perspective, abstracted modern feminine beauty, dynamic overlapping shapes, bold and innovative structure with expressive form'
+      malePrompt: 'Cubist portrait reimagined through overlapping geometric planes and analytical structure with vibrant abstract color palette. Masculine features are fragmented into angular facets and multiple viewpoints, revealing intellect and form simultaneously. Bold vibrant colors - electric blues, hot pinks, bright yellows, vivid oranges, deep purples, and lime greens create dynamic chromatic energy. Flattened color blocks with sharp contrasts between saturated hues, each geometric plane in distinct vibrant tone. The composition balances abstraction and identity through fragmented architecture, rhythm, and explosive color harmony, expressing modern masculine thought through geometric forms and vivid abstract expressionism. Preserve original eyewear if present, do not add or remove glasses. Maintain original facial hair style exactly as it appears, do not add or remove facial hair.',
+      femalePrompt: 'Cubist portrait reimagined through overlapping geometric planes and analytical structure with vibrant abstract color palette. Feminine features are fragmented into angular facets and multiple viewpoints, revealing grace and form simultaneously. Bold vibrant colors - electric blues, hot pinks, bright yellows, vivid oranges, deep purples, and lime greens create dynamic chromatic energy. Flattened color blocks with sharp contrasts between saturated hues, each geometric plane in distinct vibrant tone. The composition balances abstraction and identity through fragmented architecture, rhythm, and explosive color harmony, expressing modern feminine thought through geometric forms and vivid abstract expressionism. Preserve original eyewear if present, do not add or remove glasses. Maintain original hair length exactly as it appears.',
+      petPrompt: 'Cubist portrait of a pet (dog, cat, bird, or reptile) reimagined through overlapping geometric planes and analytical structure, with a vibrant abstract color palette. The pet\'s features are fragmented into angular facets and multiple viewpoints, revealing its form and character simultaneously. Bold, vibrant colors—electric blues, hot pinks, bright yellows, vivid oranges, deep purples, and lime greens—create dynamic chromatic energy. Flattened color blocks with sharp contrasts between saturated hues define the composition, balancing abstraction and the pet\'s identifiable features through fragmented shapes, rhythm, and explosive color harmony.'
     },
     { 
       name: 'Salvador Dalí', 
       period: 'Surrealism',
-      malePrompt: 'Surrealist portrait inspired by Dalí\'s Self-Portraits, blending hyperrealism with dreamlike invention. The masculine figure is rendered with photographic precision yet distorted by symbolic elements — melting forms, elongated shadows, or architectural illusions. Smooth glazing and luminous golden light suggest both clarity and unreality. Subtle reflections, desert-like backgrounds, and impossible spatial shifts evoke the subconscious world, merging ego, fantasy, and divine absurdity in Dalí\'s visionary style.',
-      femalePrompt: 'Surrealist portrait in the dreamlike style of Salvador Dalí, inspired by Gala and female muses, hyperrealistic feminine features with soft porcelain-like skin, fantastical surreal elements, floating or impossible objects, symbolic feminine motifs like roses or pearls, warm golden lighting with soft shadows, uncanny yet graceful composition, meticulous detail, oil painting with smooth flawless technique, otherworldly and imaginative feminine beauty'
+      malePrompt: 'Surrealist composition blending the masculine figure with iconic dreamlike symbolism. Hyperrealistic rendering with photographic precision and meticulous detail. The subject integrated into a fantastical scene featuring melting pocket watches draped over branches or edges, long-legged elephants with spindly legs walking in distant desert landscape, fried eggs, crutches as symbolic supports, distorted architectural elements with impossible perspectives. Smooth flawless glazing technique with warm golden desert light and infinite horizons. The figure maintains realistic portrayal while surrounded by symbolic impossibilities - floating objects, double images, spatial distortions. Vast barren landscape with tiny figures in distance, creating dreamlike scale and subconscious narrative. Preserve original eyewear if present, do not add or remove glasses. Maintain original facial hair style exactly as it appears, do not add or remove facial hair.',
+      femalePrompt: 'Surrealist composition blending the feminine figure with iconic dreamlike symbolism. Hyperrealistic rendering with photographic precision and meticulous detail. The subject is integrated into a fantastical scene featuring melting pocket watches draped over branches or edges, long-legged elephants with spindly legs walking across a vast desert landscape, floating orbs, crutches as symbolic supports, and distorted architectural elements with impossible perspectives. Smooth, flawless glazing technique with warm golden desert light and infinite horizons. The woman is portrayed with realistic beauty and serenity, grounded in reality yet surrounded by symbolic impossibilities — levitating objects, mirrored reflections, and spatial distortions. A vast barren landscape stretches into infinity, dotted with tiny distant figures, creating an atmosphere of subconscious mystery and ethereal allure. Preserve original eyewear if present, do not add or remove glasses. Maintain original hairstyle exactly as it appears, do not add or remove hair elements.',
+      petPrompt: 'Surrealist composition blending the pet (dog, cat, bird, or reptile) with iconic dreamlike symbolism, rendered with hyperrealistic photographic precision. The pet is integrated into a fantastical scene featuring melting pocket watches draped over branches or edges, long-legged elephants with spindly legs walking in a distant desert landscape, floating bones or toys, and distorted architectural elements with impossible perspectives. Smooth, flawless glazing technique creates warm golden desert light and infinite horizons. The pet maintains its realistic portrayal while surrounded by symbolic impossibilities—floating objects, double images, spatial distortions. A vast barren landscape with tiny figures in the distance creates a dreamlike scale and subconscious narrative, making the pet a whimsical centerpiece in a Dalí-esque dreamscape.'
     },
     { 
       name: 'Andy Warhol', 
       period: 'Pop Art',
-      malePrompt: 'Pop Art portrait in the iconic style of Andy Warhol\'s celebrity series, presenting the male face with bold graphic simplicity and vibrant commercial colors. Flat planes of electric blue, neon yellow, and hot pink create striking contrast through screen-print aesthetic. Bold black outlines and high-contrast silkscreen textures lend mechanical precision and mass-produced allure. The composition transforms identity into pop iconography, fusing fame, consumerism, and modern masculinity — a study in personality through saturated color, graphic clarity, and cultural impact.',
-      femalePrompt: 'Pop Art portrait in the iconic style of Andy Warhol, inspired by Marilyn Monroe, bold flat colors and high contrast, simplified feminine features with glamorous appeal, screen-print aesthetic, vibrant artificial palette of hot pinks, electric blues, and bright yellows, graphic composition with repetitive style, poster-like quality, smooth curves and graphic clarity, mass-produced celebrity glamour, contemporary iconic feminine imagery'
+      malePrompt: 'Pop Art portrait in iconic 2x2 grid format with four color variations of the same face. High contrast silkscreen aesthetic with simplified bold features - strong jawline, defined nose, expressive eyes reduced to graphic shapes. Each quadrant features different vibrant color combination: top-left with neon pink face on yellow background, top-right with neon green face on blue background, bottom-left with neon yellow face on pink background, bottom-right with neon blue face on green background. Flat planes of solid color, heavy black outlines and shadows, mechanical screen-print texture. The repeated image in saturated artificial colors transforms identity into pop icon, mass-produced celebrity aesthetic with commercial vibrancy and graphic clarity. Preserve original eyewear if present, do not add or remove glasses. Maintain original facial hair style exactly as it appears, do not add or remove facial hair.',
+      femalePrompt: 'Pop Art portrait in iconic 2x2 grid format with four color variations of the same face. High contrast silkscreen aesthetic with simplified glamorous features - defined eyes, bold lips, elegant curves reduced to graphic shapes. Each quadrant features different vibrant color combination: top-left with hot pink face on yellow background, top-right with electric blue face on orange background, bottom-left with bright yellow face on magenta background, bottom-right with lime green face on purple background. Flat planes of solid color, heavy black outlines and shadows, mechanical screen-print texture. The repeated feminine image in saturated artificial colors creates mass-produced celebrity glamour with commercial pop iconography and poster-like graphic clarity. Only one female figure present in composition. Preserve original eyewear if present, do not add or remove glasses. Maintain original hair length exactly as it appears.',
+      petPrompt: 'Pop Art portrait of a pet (dog, cat, bird, or reptile) in an iconic 2x2 grid format, featuring four color variations of the same pet\'s face. Rendered with a high-contrast silkscreen aesthetic and simplified bold features – expressive eyes, nose, and distinct outlines reduced to graphic shapes. Each quadrant showcases a different vibrant color combination: top-left with neon pink pet on a yellow background, top-right with neon green pet on a blue background, bottom-left with neon yellow pet on a pink background, bottom-right with neon blue pet on a green background. Flat planes of solid color, heavy black outlines, and mechanical screen-print texture create a mass-produced celebrity pet aesthetic with commercial vibrancy and graphic clarity.'
     },
     { 
       name: 'Grant Wood', 
       period: 'American Regionalism',
-      malePrompt: 'American Regionalist portrait inspired by American Gothic, translating the iconic Midwestern stoicism into painterly form. The male figure stands with resolute posture and plain dignity, rendered in crisp lines and smooth enamel texture. Earthy browns, greens, and muted blues evoke rural honesty and timeless simplicity. The background suggests pastoral farmland or clapboard house geometry, symbolizing steadfast values and quiet resilience — an archetype of American masculine endurance.',
-      femalePrompt: 'American Regionalist portrait in the style of Grant Wood, inspired by American Gothic female figure, precise stylized feminine features, strong Midwestern character with gentle dignity, modest expression with subtle charm, clean linear forms with smooth enamel-like finish, warm earth tones with soft pastels, folk art influence, period American dress with apron or simple clothing, timeless portrayal of wholesome and virtuous American femininity'
+      malePrompt: 'American Regionalist portrait in two-figure composition featuring a stern-faced man and woman standing together in front of white clapboard house with Gothic window. Transform the male subject into the farmer figure in foreground - wearing dark jacket with white collarless shirt, round wire spectacles, holding three-pronged pitchfork vertically. The man rendered with resolute stoic posture and plain dignity, balding or short hair, gazing directly forward with serious expression. Keep the woman in background as the original composition shows - modest period dress with white collar, cameo brooch at neck, standing slightly behind. Both rendered in crisp lines and smooth enamel texture with precise stylized features. Earthy browns, greens, and muted blues evoke rural Midwestern honesty. Folk art influence with clean linear forms, capturing American heartland endurance. The male subject should clearly become the pitchfork-holding farmer while woman remains faithful to original painting. Preserve original eyewear if present, do not add or remove glasses. Maintain original facial hair style exactly as it appears, do not add or remove facial hair.',
+      femalePrompt: 'American Regionalist portrait in two-figure composition featuring a man and woman standing together in front of white clapboard house with Gothic window. Transform the female subject into the woman figure - wearing modest period dress with white rickrack trim, white collar, cameo brooch at neck, hair pulled back in severe center part into a bun. The woman rendered with precise stylized features, strong Midwestern character with gentle restrained dignity, modest serious expression, standing slightly behind or beside. Keep the man as the original composition shows - stern farmer in dark jacket, holding three-pronged pitchfork, round spectacles, balding, gazing forward stoically. Both rendered in crisp lines and smooth enamel-like finish with precise folk art style. Warm earth tones with soft pastels, clean linear forms. The female subject should clearly become the modest woman in period dress while man remains faithful to original painting composition. Only one female figure present in composition. Preserve original eyewear if present, do not add or remove glasses. Maintain original hair length exactly as it appears.',
+      petPrompt: 'American Regionalist portrait of a pet (dog, cat, bird, or reptile) dressed as the farmer/man from Grant Wood\'s American Gothic, standing resolutely in front of a white clapboard house with a Gothic window. The pet is posed with a severe, stoic dignity, its expression serious and earnest. The pet\'s markings and features are stylized with clean, linear forms and a smooth, enamel-like finish. The background is a simple, muted landscape in earthy browns and greens, evoking rural Midwestern honesty. The composition captures the pet\'s enduring character through folk art influence and simplified, precise forms.'
     }
   ];
+  // ============================================================================
+  // HANDLER FUNCTIONS AND EFFECTS
+  // ============================================================================
 
-  const upsellProducts = [
-    {
-      name: 'Premium Framed Poster',
-      price: 29.99,
-      originalPrice: 44.99,
-      emoji: '🖼️',
-      description: 'Your favorite masterpiece in a beautiful 18x24" frame ready to hang!',
-      features: ['Museum-quality print', 'Premium black frame included', 'Ready to hang hardware'],
-      color: 'from-blue-50 to-cyan-50',
-      borderColor: 'border-blue-200 hover:border-blue-400',
-      buttonColor: 'bg-blue-600 hover:bg-blue-700'
-    },
-    {
-      name: 'Custom Cartoon Mug',
-      price: 19.99,
-      emoji: '☕',
-      description: 'Start every morning with your masterpiece! High-quality ceramic mug.',
-      features: ['Dishwasher & microwave safe', 'Vibrant, fade-resistant printing', '11oz capacity'],
-      color: 'from-pink-50 to-rose-50',
-      borderColor: 'border-pink-200 hover:border-pink-400',
-      buttonColor: 'bg-pink-600 hover:bg-pink-700'
-    },
-    {
-      name: 'Decorative Throw Pillow',
-      price: 24.99,
-      emoji: '🛏️',
-      description: 'Cozy up with your masterpiece on a soft 16x16" pillow!',
-      features: ['Super soft premium fabric', 'Hidden zipper design', 'Machine washable cover'],
-      color: 'from-purple-50 to-indigo-50',
-      borderColor: 'border-purple-200 hover:border-purple-400',
-      buttonColor: 'bg-purple-600 hover:bg-purple-700'
-    },
-    {
-      name: 'Custom Phone Case',
-      price: 22.99,
-      emoji: '📱',
-      description: 'Protect your phone in style with your masterpiece!',
-      features: ['Fits iPhone & Samsung models', 'Durable protective case', 'Scratch-resistant finish'],
-      color: 'from-yellow-50 to-orange-50',
-      borderColor: 'border-yellow-200 hover:border-yellow-400',
-      buttonColor: 'bg-orange-600 hover:bg-orange-700'
-    },
-    {
-      name: 'Custom T-Shirt',
-      price: 27.99,
-      emoji: '👕',
-      description: 'Wear your masterpiece! Premium quality tee with your design.',
-      features: ['100% cotton comfort', 'All sizes S-3XL available', 'Durable heat-transfer print'],
-      color: 'from-green-50 to-emerald-50',
-      borderColor: 'border-green-200 hover:border-green-400',
-      buttonColor: 'bg-green-600 hover:bg-green-700'
-    }
-  ];
   useEffect(() => {
     const loadSessionFromUrl = async () => {
       const path = window.location.pathname;
@@ -198,7 +175,6 @@ export default function MasterpieceMe() {
         try {
           const response = await fetch(`${BACKEND_URL}/api/session/${urlSessionId}`);
           const data = await response.json();
-          
           const session = data;
           
           console.log('✅ Session loaded:', session);
@@ -212,6 +188,8 @@ export default function MasterpieceMe() {
             setHistoryIndex(session.history_index || {});
             setCustomerName(session.customer_name || '');
             setDedication(session.dedication || '');
+            setEditedDedication(session.dedication || '');
+            setCoverColor(session.cover_color || 'pink');
             
             const parsedGeneratedImages = typeof session.generated_images === 'string' 
               ? JSON.parse(session.generated_images) 
@@ -224,19 +202,12 @@ export default function MasterpieceMe() {
             setSelectedVariations(parsedSelectedVariations);
             setUploadedImage(session.uploaded_image);
             
-            const currentArtistNum = session.current_artist || 0;
-            
             if (!session.selected_gender) {
               setCurrentStep('gender-select');
-            } else if (currentArtistNum >= 12) {
+            } else if (Object.keys(parsedSelectedVariations).length === 12) {
               setCurrentStep('preview');
-            } else if (parsedGeneratedImages[currentArtistNum]) {
-              setCurrentStep('select-variation');
             } else {
-              setCurrentStep('generating');
-              setTimeout(() => {
-                generateVariations(currentArtistNum, session.selected_gender, session.uploaded_image);
-              }, 500);
+              setCurrentStep('personalization');
             }
           } else {
             setCurrentStep('home');
@@ -254,10 +225,13 @@ export default function MasterpieceMe() {
   }, []);
 
   const saveSession = async (updates) => {
-    if (!sessionId) return;
+    if (!sessionId) {
+      console.log('⚠️ No session ID, skipping save');
+      return;
+    }
     
     try {
-      console.log('💾 Saving session:', updates);
+      console.log('💾 Saving session:', { sessionId, updates });
       setShowSaveNotification(true);
       
       const response = await fetch(`${BACKEND_URL}/api/session/${sessionId}/update`, {
@@ -266,9 +240,16 @@ export default function MasterpieceMe() {
         body: JSON.stringify(updates)
       });
       
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Save failed:', response.status, errorText);
+        setShowSaveNotification(false);
+        return;
+      }
+      
       const data = await response.json();
       if (data.success) {
-        console.log('✅ Session saved successfully');
+        console.log('✅ Session saved');
         setTimeout(() => setShowSaveNotification(false), 2000);
       }
     } catch (error) {
@@ -374,7 +355,7 @@ export default function MasterpieceMe() {
 
       if (data.success) {
         setVerificationStep('verify');
-        console.log(`✅ Verification code sent to ${contactMethod}`);
+        console.log(`✅ Verification code sent`);
       } else {
         alert(data.error || 'Failed to send verification code');
       }
@@ -409,10 +390,10 @@ export default function MasterpieceMe() {
       const data = await response.json();
 
       if (data.success) {
-        console.log('✅ Code verified successfully');
+        console.log('✅ Code verified');
         setCurrentStep('gender-select');
       } else {
-        alert(data.error || 'Invalid code. Please try again.');
+        alert(data.error || 'Invalid code');
         setVerificationCode(['', '', '', '', '', '']);
         if (codeInputRefs.current[0]) {
           codeInputRefs.current[0].focus();
@@ -420,7 +401,7 @@ export default function MasterpieceMe() {
       }
     } catch (error) {
       console.error('❌ Verification error:', error);
-      alert('Verification failed. Please try again.');
+      alert('Verification failed');
     } finally {
       setIsVerifying(false);
     }
@@ -444,155 +425,133 @@ export default function MasterpieceMe() {
     }
   };
 
-  const selectGender = async (gender) => {
+  const selectGenderAndStartBatchGeneration = async (gender) => {
     setSelectedGender(gender);
-    await saveSession({ selected_gender: gender, current_artist: 0 });
-    setCurrentStep('personalization');
+    await saveSession({ 
+      selected_gender: gender,
+      cover_color: coverColor
+    });
+    setCurrentStep('batch-generating');
+    setBatchGenerating(true);
+    setBatchProgress(0);
+    
+    // Start progress simulation
+    const progressInterval = setInterval(() => {
+      setBatchProgress(prev => {
+        if (prev >= 95) {
+          clearInterval(progressInterval);
+          return prev;
+        }
+        // Progress slows down as it gets higher (more realistic)
+        const increment = prev < 30 ? 3 : prev < 60 ? 2 : 1;
+        return Math.min(95, prev + increment);
+      });
+    }, 1000);
+    
+    // Start batch generation
+    setTimeout(() => {
+      generateAllTwelve(gender).then(() => {
+        clearInterval(progressInterval);
+        setBatchProgress(100);
+      });
+    }, 500);
+    
+    // Move to personalization after 2 seconds so user can fill it out while generating
+    setTimeout(() => {
+      setCurrentStep('personalization');
+    }, 2000);
   };
 
-  const generateVariations = async (artistIndex, gender = selectedGender, image = uploadedImage) => {
+  const generateAllTwelve = async (gender = selectedGender) => {
+    setBatchGenerating(true);
+    setBatchProgress(0);
+    console.log('🎨 BATCH: Starting all 12 artists...');
+
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/generate-all-12`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          image: uploadedImage,
+          selectedGender: gender,
+          artists: artists
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        console.log('✅ BATCH COMPLETE!');
+        const allImages = data.generatedImages;
+        
+        // Auto-select first variation for each artist
+        const autoSelected = {};
+        Object.keys(allImages).forEach(artistIdx => {
+          autoSelected[artistIdx] = allImages[artistIdx][0];
+        });
+
+        setGeneratedImages(allImages);
+        setSelectedVariations(autoSelected);
+
+        await saveSession({
+          generated_images: allImages,
+          selected_variations: autoSelected,
+          current_artist: 12
+        });
+
+        setBatchGenerating(false);
+        setCurrentStep('preview');
+      } else {
+        throw new Error(data.error || 'Batch generation failed');
+      }
+    } catch (error) {
+      console.error('❌ Batch generation error:', error);
+      setBatchGenerating(false);
+      alert('Generation failed. Please try again.');
+    }
+  };
+
+  const regenerateArtist = async (artistIndex) => {
     setIsGenerating(true);
-    setGenerationProgress(0);
-    setEstimatedTimeLeft(40);
-    
     const artist = artists[artistIndex];
-    const selectedPrompt = gender === 'Male' ? artist.malePrompt : artist.femalePrompt;
-    const fullPrompt = `${selectedPrompt}, high quality, detailed`;
-    
-    console.log(`🎨 Generating for ${artist.name}...`);
-    console.log('📝 Full prompt:', fullPrompt.substring(0, 100) + '...');
-    
-    const startTime = Date.now();
-    
-    const progressInterval = setInterval(() => {
-      const elapsed = (Date.now() - startTime) / 1000;
-      const estimatedTotal = 40;
-      const remaining = Math.max(0, Math.ceil(estimatedTotal - elapsed));
-      setEstimatedTimeLeft(remaining);
-      
-      const progress = Math.min(95, (elapsed / estimatedTotal) * 100);
-      setGenerationProgress(Math.floor(progress));
-    }, 100);
-    
+    const promptKey = selectedGender === 'Male' ? 'malePrompt' : 
+                      selectedGender === 'Female' ? 'femalePrompt' : 'petPrompt';
+    const artistPrompt = artist[promptKey];
+
     try {
       const response = await fetch(`${BACKEND_URL}/api/generate-variations`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          image: image,
+          image: uploadedImage,
           artistName: artist.name,
-          artistPrompt: fullPrompt,
+          artistPrompt: artistPrompt,
           count: 2
         })
       });
-      
+
       const data = await response.json();
-      clearInterval(progressInterval);
-      
+
       if (data.success) {
-        setGenerationProgress(100);
-        setEstimatedTimeLeft(0);
-        
-        const newHistory = { ...variationHistory };
-        if (!newHistory[artistIndex]) {
-          newHistory[artistIndex] = [];
-        }
-        newHistory[artistIndex].push(data.variations);
-        
-        const newHistoryIndex = { ...historyIndex, [artistIndex]: newHistory[artistIndex].length - 1 };
-        
-        setVariationHistory(newHistory);
-        setHistoryIndex(newHistoryIndex);
-        
-        const newGeneratedImages = { ...generatedImages, [artistIndex]: data.variations };
-        setGeneratedImages(newGeneratedImages);
-        
-        await saveSession({
-          generated_images: newGeneratedImages,
-          variation_history: newHistory,
-          history_index: newHistoryIndex,
-          current_artist: artistIndex
-        });
-        
-        setTimeout(() => {
-          setIsGenerating(false);
-          setCurrentStep('select-variation');
-        }, 500);
-      } else {
-        throw new Error(data.error || 'Generation failed');
+        const newImages = { ...generatedImages };
+        newImages[artistIndex] = data.variations;
+        setGeneratedImages(newImages);
+        setShowArtistModal(false);
+        setIsGenerating(false);
       }
     } catch (error) {
-      clearInterval(progressInterval);
-      console.error('❌ Generation error:', error);
-      alert('Generation failed. Please try again.');
+      console.error('❌ Regeneration failed:', error);
       setIsGenerating(false);
+      alert('Regeneration failed');
     }
   };
 
-  const selectVariation = async (variation) => {
-    const newSelections = { ...selectedVariations, [currentArtist]: variation };
-    setSelectedVariations(newSelections);
-    
-    const nextArtist = currentArtist + 1;
-    
-    await saveSession({
-      selected_variations: newSelections,
-      current_artist: nextArtist
-    });
-    
-    if (nextArtist < 12) {
-      setCurrentArtist(nextArtist);
-      setCurrentStep('generating');
-      generateVariations(nextArtist);
-    } else {
-      setCurrentStep('preview');
-    }
-  };
-
-  const shuffleVariations = async () => {
-    const count = shuffleCount[currentArtist] || 0;
-    if (count >= 1) {
-      alert('Maximum 1 shuffle per artist');
-      return;
-    }
-    
-    const newShuffleCount = { ...shuffleCount, [currentArtist]: count + 1 };
-    setShuffleCount(newShuffleCount);
-    
-    await saveSession({ shuffle_count: newShuffleCount });
-    
-    setCurrentStep('generating');
-    generateVariations(currentArtist);
-  };
-
-  const goBack = () => {
-    const history = variationHistory[currentArtist];
-    const currentIdx = historyIndex[currentArtist];
-    
-    if (history && currentIdx > 0) {
-      const newIndex = { ...historyIndex, [currentArtist]: currentIdx - 1 };
-      setHistoryIndex(newIndex);
-      
-      const newGeneratedImages = { ...generatedImages, [currentArtist]: history[currentIdx - 1] };
-      setGeneratedImages(newGeneratedImages);
-      
-      saveSession({ generated_images: newGeneratedImages, history_index: newIndex });
-    }
-  };
-
-  const goForward = () => {
-    const history = variationHistory[currentArtist];
-    const currentIdx = historyIndex[currentArtist];
-    
-    if (history && currentIdx < history.length - 1) {
-      const newIndex = { ...historyIndex, [currentArtist]: currentIdx + 1 };
-      setHistoryIndex(newIndex);
-      
-      const newGeneratedImages = { ...generatedImages, [currentArtist]: history[currentIdx + 1] };
-      setGeneratedImages(newGeneratedImages);
-      
-      saveSession({ generated_images: newGeneratedImages, history_index: newIndex });
-    }
+  const selectNewVariation = async (artistIdx, variation) => {
+    const newSelected = { ...selectedVariations, [artistIdx]: variation };
+    setSelectedVariations(newSelected);
+    await saveSession({ selected_variations: newSelected });
+    setShowArtistModal(false);
+    setSelectedArtistForChange(null);
   };
 
   const copyLink = () => {
@@ -602,49 +561,19 @@ export default function MasterpieceMe() {
     setTimeout(() => setShowCopyNotification(false), 2000);
   };
 
-  const openImageSelector = (product) => {
-    setSelectedProductForImage(product);
-    setShowImageSelector(true);
-  };
-
-  const selectImageForProduct = (artistIdx) => {
-    const selectedImage = selectedVariations[artistIdx];
-    const artistName = artists[artistIdx].name;
-    
-    const productWithImage = {
-      ...selectedProductForImage,
-      selectedImage: selectedImage.url,
-      artistName: artistName,
-      id: Date.now()
-    };
-    
-    setCartItems([...cartItems, productWithImage]);
-    setCartTotal(cartTotal + selectedProductForImage.price);
-    setShowImageSelector(false);
-    setSelectedProductForImage(null);
-    
-    alert(`Added ${selectedProductForImage.name} with ${artistName} artwork!`);
-  };
-
-  const removeFromCart = (itemId) => {
-    const itemToRemove = cartItems.find(item => item.id === itemId);
-    if (itemToRemove) {
-      setCartItems(cartItems.filter(item => item.id !== itemId));
-      setCartTotal(cartTotal - itemToRemove.price);
-    }
-  };
-
   const handleCheckout = async () => {
     try {
+      const sessionData = await fetch(`${BACKEND_URL}/api/session/${sessionId}`);
+      const session = await sessionData.json();
+      const email = session.verification_email || contactValue || 'test@example.com';
+      
       const response = await fetch(`${BACKEND_URL}/api/create-checkout`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           selectedImages: Object.values(selectedVariations),
-          customerEmail: 'customer@example.com',
-          sessionId,
-          cartItems: cartItems,
-          totalAmount: cartTotal
+          customerEmail: email,
+          sessionId
         })
       });
       
@@ -653,335 +582,371 @@ export default function MasterpieceMe() {
         window.location.href = data.checkoutUrl;
       }
     } catch (error) {
-      console.error('❌ Checkout error:', error);
+      console.error('Checkout error:', error);
       alert('Checkout failed. Please try again.');
     }
   };
 
-  const canGoBack = variationHistory[currentArtist] && historyIndex[currentArtist] > 0;
-  const canGoForward = variationHistory[currentArtist] && 
-    historyIndex[currentArtist] < variationHistory[currentArtist].length - 1;
+  const handleSaveDedication = async () => {
+    setDedication(editedDedication);
+    await saveSession({ dedication: editedDedication.trim() });
+    setShowEditDedication(false);
+  };
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-red-50">
-      <header className="bg-white shadow-sm sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-3xl">🎨</span>
-            <span className="text-2xl font-bold bg-gradient-to-r from-amber-600 to-red-600 bg-clip-text text-transparent">
+  const handleCoverChange = async (newType) => {
+    setCoverType(newType);
+    const newPrice = newType === 'softcover' ? 39.99 : 49.99;
+    setPrice(newPrice);
+    
+    try {
+      await fetch(`${BACKEND_URL}/api/sessions/${sessionId}/cover-type`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ coverType: newType })
+      });
+      console.log('✅ Cover type saved');
+    } catch (error) {
+      console.error('Failed to save cover type:', error);
+    }
+  };
+  <div className="min-h-screen bg-gradient-to-b from-amber-50 to-white">
+      {/* HEADER */}
+      <header className="bg-white shadow-sm sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+          <button
+            onClick={() => setCurrentStep('home')}
+            className="flex items-center gap-2 text-2xl font-bold">
+            <span>🎨</span>
+            <span className="bg-gradient-to-r from-amber-600 to-red-600 text-transparent bg-clip-text">
               MasterpieceMe
             </span>
-          </div>
-          <div className="flex items-center gap-3">
-            {sessionId && currentStep !== 'home' && currentStep !== 'success' && (
+          </button>
+
+          <div className="flex items-center gap-4">
+            {sessionId && (
               <button
                 onClick={copyLink}
-                className="flex items-center gap-2 bg-amber-100 text-amber-800 px-4 py-2 rounded-full font-semibold hover:bg-amber-200 transition">
-                <Copy className="w-4 h-4" />
+                className="flex items-center gap-2 px-4 py-2 bg-amber-100 text-amber-800 rounded-full hover:bg-amber-200 transition font-semibold">
+                <Link className="w-4 h-4" />
                 Copy Link
               </button>
             )}
             <button
-              onClick={() => {
-                setCurrentStep('home');
-                setUploadedImage(null);
-                setSessionId(null);
-                window.history.pushState({}, '', '/');
-              }}
-              className="flex items-center gap-2 text-gray-600 hover:text-gray-900">
-              <Home className="w-5 h-5" />
+              onClick={() => setCurrentStep('home')}
+              className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-full hover:bg-gray-200 transition">
+              <Home className="w-4 h-4" />
               Home
             </button>
           </div>
         </div>
       </header>
 
-      {showCopyNotification && (
-        <div className="fixed top-20 right-4 bg-green-500 text-white px-6 py-3 rounded-full shadow-lg z-50 animate-bounce">
-          ✅ Link copied!
+      {/* Notification Toasts */}
+      {showCopiedNotification && (
+        <div className="fixed top-20 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-fade-in">
+          ✓ Link copied to clipboard!
         </div>
       )}
 
-      {showSaveNotification && (
-        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 bg-blue-500 text-white px-6 py-3 rounded-full shadow-lg z-50 flex items-center gap-2">
-          <Check className="w-4 h-4" />
-          Autosaved
+      {showAutosaveNotification && (
+        <div className="fixed bottom-4 right-4 bg-blue-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 text-sm">
+          💾 Auto-saved
         </div>
       )}
 
-      {showImageSelector && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-8 max-w-6xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-3xl font-bold">Choose Your Artwork</h3>
-              <button
-                onClick={() => {
-                  setShowImageSelector(false);
-                  setSelectedProductForImage(null);
-                }}
-                className="p-2 hover:bg-gray-100 rounded-full">
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-            
-            <p className="text-gray-600 mb-8">
-              Select which masterpiece to feature on your {selectedProductForImage?.name}
-            </p>
-
-            <div className="grid grid-cols-3 md:grid-cols-4 gap-6">
-              {Object.entries(selectedVariations).map(([artistIdx, variation]) => {
-                const artist = artists[parseInt(artistIdx)];
-                return (
-                  <button
-                    key={artistIdx}
-                    onClick={() => selectImageForProduct(parseInt(artistIdx))}
-                    className="group relative">
-                    <div className="overflow-hidden rounded-xl shadow-lg hover:shadow-2xl transition">
-                      <img
-                        src={variation.url}
-                        alt={artist.name}
-                        className="w-full h-48 object-cover group-hover:scale-110 transition duration-300"
-                      />
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
-                        <div className="bg-white rounded-full p-4">
-                          <Check className="w-8 h-8 text-amber-600" />
-                        </div>
-                      </div>
-                    </div>
-                    <p className="text-center mt-2 font-bold text-sm">{artist.name}</p>
-                    <p className="text-center text-xs text-gray-500">{artist.period}</p>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      )}
-
+      {/* HOME STEP */}
       {currentStep === 'home' && (
-        <section className="max-w-4xl mx-auto px-4 py-20 text-center">
-          <h1 className="text-6xl font-black mb-6">
-            Transform Into
-            <br />
-            <span className="bg-gradient-to-r from-amber-600 via-orange-600 to-red-600 bg-clip-text text-transparent">
-              12 Masterpiece Portraits
-            </span>
-          </h1>
-          <p className="text-xl text-gray-700 mb-12 max-w-2xl mx-auto">
-            See yourself painted by Leonardo da Vinci, Van Gogh, Picasso, and 9 more legendary artists!
-          </p>
-
-          <input
-            type="file"
-            id="fileInput"
-            accept="image/jpeg,image/png"
-            onChange={handleFileChange}
-            className="hidden"
-          />
-
-          <div
-            onDrop={handleDrop}
-            onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-            onDragLeave={() => setIsDragging(false)}
-            onClick={() => {
-              if (!captchaToken) {
-                alert('Please complete the security check first');
-                return;
-              }
-              document.getElementById('fileInput').click();
-            }}
-            className={`border-4 border-dashed rounded-3xl p-16 cursor-pointer transition ${
-              isDragging ? 'border-amber-600 bg-amber-100' : 'border-amber-300 bg-amber-50'
-            }`}>
-            <Upload className="w-16 h-16 text-amber-600 mx-auto mb-4" />
-            <h3 className="text-2xl font-bold mb-2">Upload Your Photo</h3>
-            <p className="text-gray-600 mb-4">Drag & drop or click to browse</p>
-            <div className="inline-block bg-gradient-to-r from-amber-600 to-red-600 text-white px-8 py-3 rounded-full font-semibold">
-              Choose File
-            </div>
-            <p className="text-sm text-gray-500 mt-4">JPG or PNG • Max 10MB</p>
-          </div>
-
-          <div className="mt-8 flex justify-center">
-            <div className="bg-white p-6 rounded-xl shadow-lg">
-              <p className="text-center text-sm text-gray-600 mb-4">
-                🔒 Security check required before upload
-              </p>
-              <Turnstile
-                siteKey={CLOUDFLARE_SITE_KEY}
-                onSuccess={(token) => {
-                  setCaptchaToken(token);
-                  console.log('✅ Captcha verified');
-                }}
-                onError={() => {
-                  setCaptchaToken(null);
-                  alert('Captcha verification failed. Please refresh and try again.');
-                }}
-                onExpire={() => {
-                  setCaptchaToken(null);
-                  console.log('⚠️ Captcha expired');
-                }}
-              />
-              {captchaToken && (
-                <p className="text-center text-green-600 text-sm mt-2">
-                  ✅ Verified! You can now upload
-                </p>
-              )}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {currentStep === 'verify-contact' && (
         <section className="max-w-4xl mx-auto px-4 py-20">
           <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold mb-4">Save Your Progress</h2>
-            <p className="text-gray-600">We'll send you a code so you can resume anytime, anywhere</p>
+            <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-amber-600 to-red-600 text-transparent bg-clip-text">
+              See Yourself as a Masterpiece
+            </h1>
+            <p className="text-xl md:text-2xl text-gray-600 mb-8">
+              Transform your photo into 12 legendary art styles
+            </p>
           </div>
 
-          <div className="flex justify-center mb-12">
-            <img
-              src={uploadedImage}
-              alt="Your photo"
-              className="w-32 h-32 rounded-full object-cover shadow-xl border-4 border-amber-300"
-            />
-          </div>
-
-          {verificationStep === 'input' ? (
-            <div className="max-w-md mx-auto">
-              <div className="bg-white rounded-3xl p-8 shadow-xl">
-                <div className="flex gap-4 mb-6">
-                  <button
-                    onClick={() => setContactMethod('email')}
-                    className={`flex-1 py-4 px-6 rounded-xl font-semibold transition ${
-                      contactMethod === 'email'
-                        ? 'bg-amber-600 text-white'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    }`}>
-                    <Mail className="w-5 h-5 inline mr-2" />
-                    Email
-                  </button>
-                  <button
-                    onClick={() => setContactMethod('sms')}
-                    className={`flex-1 py-4 px-6 rounded-xl font-semibold transition ${
-                      contactMethod === 'sms'
-                        ? 'bg-amber-600 text-white'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    }`}>
-                    <Phone className="w-5 h-5 inline mr-2" />
-                    SMS
-                  </button>
-                </div>
-
-                <div className="mb-6">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    {contactMethod === 'email' ? 'Email Address' : 'Phone Number'}
-                  </label>
-                  <input
-                    type={contactMethod === 'email' ? 'email' : 'tel'}
-                    value={contactValue}
-                    onChange={(e) => setContactValue(e.target.value)}
-                    placeholder={contactMethod === 'email' ? 'you@example.com' : '+1234567890'}
-                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-amber-600 focus:outline-none"
-                    disabled={isVerifying}
-                  />
-                </div>
-
+          <div
+            className={`relative border-4 border-dashed rounded-3xl p-12 transition ${
+              isDragging ? 'border-amber-600 bg-amber-50' : 'border-gray-300 bg-white'
+            }`}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setIsDragging(true);
+            }}
+            onDragLeave={() => setIsDragging(false)}
+            onDrop={handleDrop}>
+            
+            {uploadedImage ? (
+              <div className="text-center">
+                <img
+                  src={uploadedImage}
+                  alt="Uploaded"
+                  className="mx-auto max-w-md rounded-2xl shadow-xl mb-6"
+                />
                 <button
-                  onClick={requestVerification}
-                  disabled={isVerifying}
-                  className="w-full bg-gradient-to-r from-amber-600 to-red-600 text-white py-4 rounded-full font-bold hover:shadow-xl transition disabled:opacity-50">
-                  {isVerifying ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <Loader className="w-5 h-5 animate-spin" />
-                      Sending...
-                    </span>
-                  ) : (
-                    `Send Verification Code`
-                  )}
+                  onClick={() => {
+                    setUploadedImage(null);
+                    setSessionId(null);
+                  }}
+                  className="px-6 py-3 bg-gray-200 text-gray-700 rounded-full hover:bg-gray-300 transition">
+                  Choose Different Photo
                 </button>
+              </div>
+            ) : (
+              <div className="text-center">
+                <Upload className="w-20 h-20 mx-auto mb-4 text-amber-600" />
+                <h3 className="text-2xl font-bold mb-2">Upload Your Photo</h3>
+                <p className="text-gray-600 mb-6">Drag & drop or click to browse</p>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  accept="image/*"
+                  className="hidden"
+                />
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="px-8 py-4 bg-gradient-to-r from-amber-600 to-red-600 text-white rounded-full font-bold hover:shadow-xl transition">
+                  Select Photo
+                </button>
+              </div>
+            )}
+          </div>
 
-                <p className="text-center text-xs text-gray-500 mt-4">
-                  🔒 We'll never spam you or share your info
-                </p>
+          {uploadedImage && !captchaVerified && (
+            <div className="mt-8 text-center">
+              <p className="text-gray-600 mb-4">Verify you're human to continue:</p>
+              <div className="flex justify-center">
+                <Turnstile
+                  siteKey={TURNSTILE_SITE_KEY}
+                  onSuccess={handleCaptchaSuccess}
+                  theme="light"
+                />
               </div>
             </div>
-          ) : (
-            <div className="max-w-md mx-auto">
-              <div className="bg-white rounded-3xl p-8 shadow-xl">
-                <div className="text-center mb-6">
-                  <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    {contactMethod === 'email' ? (
-                      <Mail className="w-8 h-8 text-amber-600" />
-                    ) : (
-                      <Phone className="w-8 h-8 text-amber-600" />
-                    )}
-                  </div>
-                  <h3 className="text-2xl font-bold mb-2">Check Your {contactMethod === 'email' ? 'Email' : 'Phone'}!</h3>
-                  <p className="text-gray-600">
-                    We sent a 6-digit code to<br />
-                    <span className="font-semibold">{contactValue}</span>
-                  </p>
-                </div>
+          )}
 
-                <div className="flex gap-2 justify-center mb-6">
-                  {[0, 1, 2, 3, 4, 5].map((index) => (
-                    <input
-                      key={index}
-                      ref={(el) => (codeInputRefs.current[index] = el)}
-                      type="text"
-                      maxLength={1}
-                      value={verificationCode[index]}
-                      onChange={(e) => handleCodeInput(index, e.target.value)}
-                      onKeyDown={(e) => handleCodeKeyDown(index, e)}
-                      className="w-12 h-14 text-center text-2xl font-bold border-2 border-gray-300 rounded-xl focus:border-amber-600 focus:outline-none"
-                      disabled={isVerifying}
-                    />
-                  ))}
-                </div>
+          {uploadedImage && captchaVerified && !sessionId && (
+            <div className="mt-8 text-center">
+              <Loader className="w-8 h-8 animate-spin mx-auto text-amber-600" />
+              <p className="mt-2 text-gray-600">Creating your session...</p>
+            </div>
+          )}
 
-                <button
-                  onClick={verifyCode}
-                  disabled={isVerifying || verificationCode.join('').length !== 6}
-                  className="w-full bg-gradient-to-r from-amber-600 to-red-600 text-white py-4 rounded-full font-bold hover:shadow-xl transition disabled:opacity-50 mb-4">
-                  {isVerifying ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <Loader className="w-5 h-5 animate-spin" />
-                      Verifying...
-                    </span>
-                  ) : (
-                    'Verify & Continue →'
-                  )}
-                </button>
-
-                <div className="text-center text-sm">
-                  <button
-                    onClick={() => {
-                      setVerificationStep('input');
-                      setVerificationCode(['', '', '', '', '', '']);
-                    }}
-                    className="text-amber-600 hover:text-amber-700 font-semibold">
-                    ← Change {contactMethod === 'email' ? 'email' : 'phone'}
-                  </button>
-                  <span className="text-gray-400 mx-2">|</span>
-                  <button
-                    onClick={requestVerification}
-                    disabled={isVerifying}
-                    className="text-amber-600 hover:text-amber-700 font-semibold disabled:opacity-50">
-                    Resend code
-                  </button>
-                </div>
-              </div>
+          {uploadedImage && sessionId && (
+            <div className="mt-8 text-center">
+              <button
+                onClick={() => setCurrentStep('verify-contact')}
+                className="px-12 py-4 bg-gradient-to-r from-amber-600 to-red-600 text-white rounded-full font-bold text-xl hover:shadow-xl transition">
+                Continue →
+              </button>
             </div>
           )}
         </section>
       )}
 
+      {/* VERIFY CONTACT STEP */}
+      {currentStep === 'verify-contact' && (
+        <section className="max-w-3xl mx-auto px-4 py-20">
+          {!contactVerified ? (
+            <div>
+              {!verificationSent ? (
+                <div className="bg-white rounded-3xl p-8 md:p-12 shadow-xl">
+                  <h2 className="text-3xl md:text-4xl font-bold text-center mb-4">
+                    Verify Your Contact
+                  </h2>
+                  <p className="text-gray-600 text-center mb-8">
+                    We'll send you a 6-digit code to access your masterpiece anytime
+                  </p>
+
+                  <div className="space-y-6">
+                    <div>
+                      <label className="block text-lg font-semibold mb-2">Email Address</label>
+                      <input
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="you@example.com"
+                        className="w-full px-6 py-4 border-2 border-gray-300 rounded-xl focus:border-amber-600 focus:outline-none text-lg"
+                      />
+                    </div>
+
+                    <div className="text-center text-gray-500 font-semibold">OR</div>
+
+                    <div>
+                      <label className="block text-lg font-semibold mb-2">Phone Number (SMS)</label>
+                      <input
+                        type="tel"
+                        value={sms}
+                        onChange={(e) => setSms(e.target.value)}
+                        placeholder="(555) 123-4567"
+                        className="w-full px-6 py-4 border-2 border-gray-300 rounded-xl focus:border-amber-600 focus:outline-none text-lg"
+                      />
+                    </div>
+
+                    <button
+                      onClick={requestVerification}
+                      disabled={isVerifying || (!email && !sms)}
+                      className="w-full py-4 bg-gradient-to-r from-amber-600 to-red-600 text-white rounded-full font-bold text-lg hover:shadow-xl transition disabled:opacity-50 disabled:cursor-not-allowed">
+                      {isVerifying ? 'Sending...' : 'Send Verification Code'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-white rounded-3xl p-8 md:p-12 shadow-xl">
+                  <h2 className="text-3xl md:text-4xl font-bold text-center mb-4">
+                    Enter Your Code
+                  </h2>
+                  <p className="text-gray-600 text-center mb-8">
+                    We sent a 6-digit code to {email || sms}
+                  </p>
+
+                  <div className="flex justify-center gap-2 mb-8">
+                    {[0, 1, 2, 3, 4, 5].map((index) => (
+                      <input
+                        key={index}
+                        ref={(el) => (codeInputsRef.current[index] = el)}
+                        type="text"
+                        maxLength={1}
+                        value={verificationCode[index] || ''}
+                        onChange={(e) => handleCodeInput(index, e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Backspace' && !verificationCode[index] && index > 0) {
+                            codeInputsRef.current[index - 1]?.focus();
+                          }
+                        }}
+                        className="w-12 h-14 md:w-16 md:h-20 text-center text-2xl md:text-3xl font-bold border-2 border-gray-300 rounded-xl focus:border-amber-600 focus:outline-none"
+                      />
+                    ))}
+                  </div>
+
+                  {verificationError && (
+                    <p className="text-red-600 text-center mb-4">{verificationError}</p>
+                  )}
+
+                  <div className="text-center text-sm text-gray-600">
+                    Didn't receive it?
+                    <span className="text-gray-400 mx-2">|</span>
+                    <button
+                      onClick={requestVerification}
+                      disabled={isVerifying}
+                      className="text-amber-600 hover:text-amber-700 font-semibold disabled:opacity-50">
+                      Resend code
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : null}
+        </section>
+      )}
+
+      {/* GENDER SELECT STEP - NOW FIRST */}
+      {currentStep === 'gender-select' && (
+        <section className="max-w-5xl mx-auto px-4 py-20">
+          <div className="text-center mb-12">
+            <h2 className="text-4xl md:text-5xl font-bold mb-4">Choose Your Style</h2>
+            <p className="text-lg md:text-xl text-gray-600">
+              Select how you'd like to be portrayed across all 12 legendary artists
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+            <button
+              onClick={() => selectGenderAndStartBatchGeneration('Male')}
+              className="group relative bg-gradient-to-br from-blue-500 to-blue-700 rounded-3xl p-8 hover:shadow-2xl transition transform hover:scale-105">
+              <div className="text-center">
+                <div className="text-6xl mb-4">👨</div>
+                <h3 className="text-3xl font-bold text-white mb-2">Male</h3>
+                <p className="text-blue-100">Portrayed as David, Self-Portraits, and more</p>
+              </div>
+            </button>
+
+            <button
+              onClick={() => selectGenderAndStartBatchGeneration('Female')}
+              className="group relative bg-gradient-to-br from-pink-500 to-red-600 rounded-3xl p-8 hover:shadow-2xl transition transform hover:scale-105">
+              <div className="text-center">
+                <div className="text-6xl mb-4">👩</div>
+                <h3 className="text-3xl font-bold text-white mb-2">Female</h3>
+                <p className="text-pink-100">Portrayed as Mona Lisa, Girl with Pearl Earring, and more</p>
+              </div>
+            </button>
+
+            <button
+              onClick={() => selectGenderAndStartBatchGeneration('Pet')}
+              className="group relative bg-gradient-to-br from-green-500 to-teal-600 rounded-3xl p-8 hover:shadow-2xl transition transform hover:scale-105">
+              <div className="text-center">
+                <div className="text-6xl mb-4">🐾</div>
+                <h3 className="text-3xl font-bold text-white mb-2">Pet</h3>
+                <p className="text-green-100">Your furry friend in legendary art styles</p>
+              </div>
+            </button>
+          </div>
+        </section>
+      )}
+
+      {/* BATCH GENERATING STEP - WITH REAL PROGRESS */}
+      {currentStep === 'batch-generating' && (
+        <section className="max-w-3xl mx-auto px-4 py-20">
+          <div className="bg-white rounded-3xl p-12 shadow-xl text-center">
+            <div className="w-24 h-24 mx-auto mb-8">
+              <svg className="animate-spin" viewBox="0 0 24 24">
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                  fill="none"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                />
+              </svg>
+            </div>
+
+            <h2 className="text-4xl font-bold mb-4">Creating All 12 Masterpieces...</h2>
+            <p className="text-xl text-gray-600 mb-8">
+              Please wait while we generate your portraits in the styles of all 12 legendary artists
+            </p>
+
+            {/* REAL PROGRESS BAR */}
+            <div className="mb-6">
+              <div className="bg-gray-200 rounded-full h-6 overflow-hidden">
+                <div
+                  className="bg-gradient-to-r from-amber-500 to-red-500 h-full transition-all duration-500 flex items-center justify-center text-white text-sm font-bold"
+                  style={{ width: `${batchProgress}%` }}>
+                  {batchProgress > 10 && `${Math.round(batchProgress)}%`}
+                </div>
+              </div>
+            </div>
+
+            {/* TIMER COUNTDOWN */}
+            <p className="text-lg text-gray-500">
+              Estimated time remaining: <span className="font-bold text-amber-600">
+                {Math.max(0, Math.ceil((90 - (batchProgress / 100) * 90)))}s
+              </span>
+            </p>
+
+            <div className="mt-8 text-sm text-gray-400">
+              <p>💡 While you wait, your images are being created in parallel</p>
+              <p className="mt-2">This typically takes 60-90 seconds</p>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* PERSONALIZATION STEP - NOW SECOND (after generation starts) */}
       {currentStep === 'personalization' && (
         <section className="max-w-4xl mx-auto px-4 py-20">
           <div className="text-center mb-12">
             <h2 className="text-4xl font-bold mb-4">Personalize Your Masterpiece</h2>
-            <p className="text-gray-600">Add your name and a special dedication (optional)</p>
+            <p className="text-gray-600">Add your name, dedication, and choose your cover color</p>
+            <p className="text-sm text-amber-600 mt-2">⏳ Your 12 portraits are generating in the background...</p>
           </div>
 
           <div className="max-w-2xl mx-auto bg-white rounded-3xl p-8 shadow-xl">
@@ -1015,364 +980,713 @@ export default function MasterpieceMe() {
               <p className="text-sm text-gray-500 mt-2 text-right">{dedication.length}/300 characters</p>
             </div>
 
-            <div className="flex justify-center gap-4">
-              <button
-                onClick={() => setCurrentStep('gender-select')}
-                className="px-8 py-4 bg-gray-200 text-gray-700 rounded-full font-bold hover:bg-gray-300 transition">
-                ← Back
-              </button>
+            <div className="mb-8">
+              <label className="block text-lg font-semibold text-gray-700 mb-3">
+                Cover Color
+              </label>
+              <div className="grid grid-cols-4 gap-4">
+                {colorOptions.map((color) => (
+                  <button
+                    key={color.name}
+                    onClick={() => setCoverColor(color.name)}
+                    className={`p-4 rounded-xl border-4 transition ${
+                      coverColor === color.name ? 'border-amber-600 scale-105' : 'border-gray-200'
+                    }`}>
+                    <div className={`w-full h-16 rounded-lg ${color.bg} mb-2`}></div>
+                    <p className="text-sm font-semibold">{color.label}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex justify-center">
               <button
                 onClick={async () => {
                   if (!customerName.trim()) {
                     alert('Please enter your name');
                     return;
                   }
-                  await saveSession({ 
-                    customer_name: customerName, 
-                    dedication: dedication 
+                  
+                  await saveSession({
+                    customer_name: customerName,
+                    dedication: dedication,
+                    cover_color: coverColor
                   });
-                  setCurrentStep('generating');
-                  generateVariations(0, selectedGender, uploadedImage);
+                  
+                  setCurrentStep('preview');
                 }}
-                className="px-12 py-4 bg-gradient-to-r from-amber-600 to-red-600 text-white rounded-full font-bold hover:shadow-xl transition">
-                Start Creating My Book! →
+                className="px-12 py-4 bg-gradient-to-r from-amber-600 to-red-600 text-white rounded-full font-bold text-xl hover:shadow-xl transition">
+                Continue to Preview →
               </button>
             </div>
           </div>
-
-          <div className="mt-8 text-center">
-            <div className="inline-block bg-amber-50 rounded-xl p-6">
-              <h3 className="text-xl font-bold mb-3">Live Preview:</h3>
-              <div className="bg-gradient-to-br from-pink-500 to-pink-600 rounded-lg p-8 text-white">
-                <p className="text-sm mb-2">if famous artists painted</p>
-                <p className="text-4xl font-bold">
-                  {customerName || '<your name>'}
-                </p>
-              </div>
-            </div>
-          </div>
         </section>
       )}
-
-      {currentStep === 'gender-select' && (
-        <section className="max-w-4xl mx-auto px-4 py-20">
-          <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold mb-4">Select Style</h2>
-            <p className="text-gray-600">Choose masterpiece reference</p>
-          </div>
-
-          <div className="flex justify-center mb-12">
-            <img
-              src={uploadedImage}
-              alt="Your photo"
-              className="w-32 h-32 rounded-full object-cover shadow-xl border-4 border-amber-300"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-6 max-w-2xl mx-auto">
-            <button
-              onClick={() => selectGender('Male')}
-              className="bg-gradient-to-br from-blue-500 to-blue-600 text-white p-8 rounded-3xl hover:shadow-2xl transition transform hover:scale-105">
-              <div className="text-6xl mb-4">👨</div>
-              <div className="text-2xl font-bold mb-2">Male</div>
-              <div className="text-sm opacity-90">David, Self-Portraits</div>
-            </button>
-
-            <button
-              onClick={() => selectGender('Female')}
-              className="bg-gradient-to-br from-pink-500 to-rose-600 text-white p-8 rounded-3xl hover:shadow-2xl transition transform hover:scale-105">
-              <div className="text-6xl mb-4">👩</div>
-              <div className="text-2xl font-bold mb-2">Female</div>
-              <div className="text-sm opacity-90">Mona Lisa, Gala</div>
-            </button>
-          </div>
-        </section>
-      )}
-
-      {currentStep === 'generating' && (
-        <section className="max-w-4xl mx-auto px-4 py-20">
-          <div className="text-center">
-            <Loader className="w-24 h-24 text-amber-600 animate-spin mx-auto mb-8" />
-            <h2 className="text-4xl font-bold mb-4">
-              Creating {artists[currentArtist].name} Portrait...
-            </h2>
-            <p className="text-xl text-gray-600 mb-8">{artists[currentArtist].period}</p>
-            
-            <div className="max-w-md mx-auto mb-4">
-              <div className="bg-gray-200 rounded-full h-4 overflow-hidden">
-                <div
-                  className="bg-gradient-to-r from-amber-500 to-red-500 h-full transition-all duration-300"
-                  style={{ width: `${generationProgress}%` }}
-                />
-              </div>
-            </div>
-            <p className="text-sm text-gray-500 mb-4">{generationProgress}%</p>
-            
-            {estimatedTimeLeft > 0 && (
-              <div className="flex items-center justify-center gap-2 text-gray-600 mb-6">
-                <Clock className="w-4 h-4" />
-                <span>{estimatedTimeLeft} seconds remaining</span>
-              </div>
-            )}
-            
-            <div className="mt-8 bg-white rounded-xl p-4 inline-block">
-              <span className="font-bold text-amber-600">
-                Artist {currentArtist + 1} of 12
-              </span>
-            </div>
-          </div>
-        </section>
-      )}
-
-      {currentStep === 'select-variation' && (
-        <section className="max-w-6xl mx-auto px-4 py-20">
-          <div className="text-center mb-8">
-            <h2 className="text-4xl font-bold mb-4">
-              Pick Your Favorite {artists[currentArtist].name}!
-            </h2>
-            <p className="text-gray-600">{artists[currentArtist].period}</p>
-            <div className="mt-4 bg-amber-100 rounded-full px-6 py-3 inline-block">
-              <span className="text-xl font-bold text-amber-800">
-                Artist {currentArtist + 1} of 12
-              </span>
-            </div>
-          </div>
-
-          <div className="flex justify-center gap-4 mb-8">
-            <button
-              onClick={goBack}
-              disabled={!canGoBack}
-              className={`flex items-center gap-2 px-4 py-2 rounded-full font-semibold ${
-                canGoBack
-                  ? 'bg-amber-600 text-white hover:bg-amber-700'
-                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-              }`}>
-              <Undo className="w-4 h-4" />
-              Back
-            </button>
-
-            <button
-              onClick={shuffleVariations}
-              disabled={(shuffleCount[currentArtist] || 0) >= 1}
-              className={`px-6 py-2 rounded-full font-semibold ${
-                (shuffleCount[currentArtist] || 0) >= 1
-                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  : 'bg-purple-600 text-white hover:bg-purple-700'
-              }`}>
-              🔄 Shuffle ({1 - (shuffleCount[currentArtist] || 0)} left)
-            </button>
-
-            <button
-              onClick={goForward}
-              disabled={!canGoForward}
-              className={`flex items-center gap-2 px-4 py-2 rounded-full font-semibold ${
-                canGoForward
-                  ? 'bg-amber-600 text-white hover:bg-amber-700'
-                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-              }`}>
-              Forward
-              <Redo className="w-4 h-4" />
-            </button>
-          </div>
-
-          <div className="grid grid-cols-2 gap-8 max-w-4xl mx-auto">
-            {generatedImages[currentArtist]?.map((img) => (
-              <div
-                key={img.id}
-                onClick={() => selectVariation(img)}
-                className="relative cursor-pointer group">
-                <div className="overflow-hidden rounded-2xl shadow-xl hover:shadow-2xl transition">
-                  <img
-                    src={img.url}
-                    alt="Variation"
-                    className="w-full h-96 object-cover group-hover:scale-110 transition duration-500"
-                  />
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
-                    <div className="bg-white rounded-full p-6">
-                      <Check className="w-12 h-12 text-amber-600" />
-                    </div>
-                  </div>
-                </div>
-                <p className="text-center mt-3 font-semibold">Click to Select</p>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
+      {/* PREVIEW STEP - COMPLETE WITH FULL FLIPBOOK */}
       {currentStep === 'preview' && (
-        <section className="max-w-7xl mx-auto px-4 py-20">
-          <div className="text-center mb-12">
-            <h2 className="text-5xl font-bold mb-4">Your 12 Masterpieces!</h2>
-            <p className="text-xl text-gray-600">
-              Your portrait by history's greatest artists
+        <section className="max-w-7xl mx-auto px-4 py-12">
+          <div className="text-center mb-8">
+            <h2 className="text-4xl md:text-5xl font-bold mb-4">🎨 Your 12 Masterpieces</h2>
+            <p className="text-lg md:text-xl text-gray-600">
+              All 12 artists complete! Review your collection below
             </p>
           </div>
 
-          <div className="grid grid-cols-3 md:grid-cols-4 gap-6 mb-16">
-            {Object.entries(selectedVariations).map(([artistIdx, variation]) => {
-              const artist = artists[parseInt(artistIdx)];
-              return (
-                <div key={artistIdx} className="bg-white rounded-xl p-3 shadow-lg">
-                  <img
-                    src={variation.url}
-                    alt={artist.name}
-                    className="w-full h-64 object-cover rounded-lg mb-2"
-                  />
-                  <p className="text-center font-bold text-sm">{artist.name}</p>
-                  <p className="text-center text-xs text-gray-500">{artist.period}</p>
-                </div>
-              );
-            })}
-          </div>
-
+          {/* 12 AI-GENERATED IMAGES GRID */}
           <div className="mb-16">
-            <h3 className="text-3xl font-bold text-center mb-8">📖 Book Preview</h3>
-            <div className="max-w-2xl mx-auto">
-              <div className="bg-white rounded-2xl shadow-2xl p-8">
-                {selectedVariations[currentBookPage] && (
-                  <>
-                    <img 
-                      src={selectedVariations[currentBookPage].url} 
-                      alt={`Page ${currentBookPage + 1}`}
-                      className="w-full h-96 object-cover rounded-lg mb-4"
-                    />
-                    <div className="text-center">
-                      <p className="text-2xl font-bold mb-2">{artists[currentBookPage].name}</p>
-                      <p className="text-gray-600">{artists[currentBookPage].period}</p>
-                      <p className="text-sm text-gray-500 mt-2">Page {currentBookPage + 1} of 12</p>
+            <h3 className="text-2xl font-bold text-center mb-6">Your Portrait Gallery</h3>
+            <div className="grid grid-cols-3 md:grid-cols-4 gap-6">
+              {Object.entries(selectedVariations).map(([artistIdx, variation]) => {
+                const artist = artists[parseInt(artistIdx)];
+                return (
+                  <button
+                    key={artistIdx}
+                    onClick={() => {
+                      setSelectedModalImage({ ...variation, artist, artistIdx: parseInt(artistIdx) });
+                      setShowImageModal(true);
+                    }}
+                    className="group relative">
+                    <div className="overflow-hidden rounded-xl shadow-lg hover:shadow-2xl transition aspect-square">
+                      <img
+                        src={variation.url}
+                        alt={artist.name}
+                        className="w-full h-full object-contain group-hover:scale-110 transition duration-300"
+                      />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                        <div className="bg-white rounded-full p-4">
+                          <Check className="w-8 h-8 text-amber-600" />
+                        </div>
+                      </div>
                     </div>
-                  </>
-                )}
-              </div>
-              <div className="flex justify-between items-center mt-6">
-                <button 
-                  onClick={() => setCurrentBookPage(Math.max(0, currentBookPage - 1))}
-                  disabled={currentBookPage === 0}
-                  className={`flex items-center gap-2 px-6 py-3 rounded-full font-semibold ${currentBookPage === 0 ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-amber-600 text-white hover:bg-amber-700'}`}>
-                  <ChevronLeft className="w-5 h-5" /> Previous
-                </button>
-                <button 
-                  onClick={() => setCurrentBookPage(Math.min(11, currentBookPage + 1))}
-                  disabled={currentBookPage === 11}
-                  className={`flex items-center gap-2 px-6 py-3 rounded-full font-semibold ${currentBookPage === 11 ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-amber-600 text-white hover:bg-amber-700'}`}>
-                  Next <ChevronRight className="w-5 h-5" />
-                </button>
-              </div>
+                    <p className="text-center mt-2 font-bold text-sm">{artist.name}</p>
+                    <p className="text-center text-xs text-gray-500">{artist.period}</p>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
-          <div className="max-w-md mx-auto bg-white rounded-3xl p-8 shadow-xl mb-8">
-            <h3 className="text-2xl font-bold mb-6 text-center">Order Summary</h3>
-            <div className="space-y-4 mb-6">
-              <div className="flex justify-between py-3 border-b">
-                <span>12-Page Masterpiece Book</span>
-                <span className="font-bold">$49.99</span>
-              </div>
-              <div className="flex justify-between py-3">
-                <span>Shipping</span>
-                <span className="text-green-600 font-semibold">FREE</span>
-              </div>
-              <div className="flex justify-between py-4 bg-amber-50 rounded-xl px-4">
-                <span className="font-bold">Total</span>
-                <span className="text-2xl font-bold text-amber-600">$49.99</span>
-              </div>
-            </div>
-            <button
-              onClick={() => {
-                setCurrentStep('upsells');
-                window.history.pushState({}, '', `/session/${sessionId}?step=upsells`);
-              }}
-              className="w-full bg-gradient-to-r from-amber-600 to-red-600 text-white py-4 rounded-full font-bold hover:shadow-xl transition">
-              Continue to Add-Ons →
-            </button>
-          </div>
-        </section>
-      )}
+          {/* FLIPBOOK SECTION - COMPLETE */}
+          {(() => {
+            const bookPages = [];
 
-      {currentStep === 'upsells' && (
-        <section className="max-w-6xl mx-auto px-4 py-20">
-          <div className="text-center mb-12">
-            <h2 className="text-5xl font-bold mb-4">🎁 Make It Extra Special!</h2>
-            <p className="text-2xl text-gray-600 mb-2">Add premium products featuring your artwork</p>
-            <p className="text-sm text-gray-500 mt-4">💡 Choose which masterpiece to feature on each product</p>
-          </div>
+            // COVER (NOT COUNTED AS PAGE)
+            bookPages.push({
+              type: 'front-cover',
+              title: 'Front Cover',
+              isNotPageNumbered: true,
+              content: (
+                <div className="w-full h-full bg-gray-100 flex items-center justify-center p-4 relative">
+                  <div className="relative w-full h-full max-w-full" style={{ aspectRatio: '19/10.25' }}>
+                    <img 
+                      src="/book-pages/cover-full.png" 
+                      alt="Full Book Cover"
+                      className="w-full h-full object-contain"
+                    />
+                    <div 
+                      className="absolute text-white font-bold text-right"
+                      style={{
+                        top: '14%',
+                        right: '7.5%',
+                        width: '33%',
+                        fontSize: 'clamp(2.2rem, 4vw, 5.5rem)',
+                        lineHeight: '0.95',
+                        textShadow: '3px 3px 6px rgba(0,0,0,0.4)',
+                        fontFamily: 'serif',
+                        letterSpacing: '-0.01em',
+                        pointerEvents: 'none'
+                      }}>
+                      {customerName || 'Your Name'}
+                    </div>
+                  </div>
+                  <button
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      const newName = prompt('Enter name for cover:', customerName || 'Your Name');
+                      if (newName !== null && newName.trim()) {
+                        const trimmedName = newName.trim();
+                        setCustomerName(trimmedName);
+                        console.log('🔄 Updating name to:', trimmedName);
+                        await saveSession({ customer_name: trimmedName });
+                      }
+                    }}
+                    className="absolute top-4 right-4 flex items-center gap-1 text-pink-700 hover:text-pink-900 text-sm bg-white px-4 py-2 rounded-full shadow-xl z-20 hover:bg-pink-50 transition font-bold border-2 border-pink-200">
+                    <Edit2 className="w-4 h-4" />
+                    Edit Name
+                  </button>
+                </div>
+              )
+            });
 
-          <div className="space-y-6 mb-12">
-            {upsellProducts.map((product, idx) => (
-              <div key={idx} className={`bg-gradient-to-r ${product.color} rounded-2xl p-8 border-2 ${product.borderColor} transition hover:shadow-xl`}>
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="text-5xl mb-3">{product.emoji}</div>
-                    <h3 className="text-2xl font-bold mb-2">{product.name}</h3>
-                    <p className="text-gray-600 mb-4">{product.description}</p>
-                    <ul className="space-y-2 text-sm">
-                      {product.features.map((feature, i) => (
-                        <li key={i}>✓ {feature}</li>
+            // PAGE 1: Blank
+            bookPages.push({
+              type: 'blank',
+              title: 'Blank Page',
+              pageNumber: 1,
+              content: (<div className="w-full h-full bg-white"></div>)
+            });
+
+            // PAGE 2: Dedication
+            bookPages.push({
+              type: 'dedication',
+              title: 'Dedication',
+              pageNumber: 2,
+              content: (
+                <div className="w-full h-full bg-gradient-to-br from-amber-50 to-orange-50 flex items-center justify-center p-4 relative">
+                  <div className="relative w-full h-full max-w-full aspect-square">
+                    <img 
+                      src="/book-pages/frame.png"
+                      alt="Ornate Frame"
+                      className="absolute inset-0 w-full h-full object-contain"
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center" style={{ padding: '18%' }}>
+                      <div className="text-center w-full h-full flex flex-col items-center justify-center overflow-hidden">
+                        <button
+                          onClick={() => setShowEditDedication(true)}
+                          className="absolute top-2 right-2 flex items-center gap-1 text-amber-700 hover:text-amber-900 text-xs bg-white px-2 py-1 rounded-full shadow z-10">
+                          <Edit2 className="w-3 h-3" />
+                          Edit
+                        </button>
+                        <p className="text-xs md:text-sm lg:text-base text-gray-700 italic leading-snug font-serif whitespace-pre-wrap break-words max-w-full px-2">
+                          {dedication || 'Click Edit to add your personal message'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )
+            });
+
+            // PAGE 3: Welcome
+            bookPages.push({
+              type: 'static',
+              title: 'Welcome',
+              pageNumber: 3,
+              content: (
+                <div className="w-full h-full bg-white flex items-center justify-center">
+                  <img src="/book-pages/welcome.png" alt="Welcome" className="w-full h-full object-contain" />
+                </div>
+              )
+            });
+
+            // PAGE 4: Table of Contents
+            bookPages.push({
+              type: 'toc',
+              title: 'Table of Contents',
+              pageNumber: 4,
+              content: (
+                <div className="w-full h-full bg-white flex items-center justify-center">
+                  <img src="/book-pages/toc.png" alt="TOC" className="w-full h-full object-contain" />
+                </div>
+              )
+            });
+
+            // PAGES 5-28: 12 Artists (2 pages each)
+            const artistInfoPages = [
+              'davinci-info.png', 'michelangelo-info.png', 'raphael-info.png',
+              'rembrandt-info.png', 'vermeer-info.png', 'monet-info.png',
+              'vangogh-info.png', 'munch-info.png', 'cubism-info.png',
+              'surrealism-info.png', 'popart-info.png', 'americana-info.png'
+            ];
+
+            for (let i = 0; i < 12; i++) {
+              const artist = artists[i];
+              const aiImage = selectedVariations[i];
+              
+              bookPages.push({
+                type: 'artwork',
+                artistIdx: i,
+                title: `${artist.name} Portrait`,
+                pageNumber: 5 + (i * 2),
+                content: (
+                  <div 
+                    className="w-full h-full bg-gray-900 flex items-center justify-center p-4 cursor-pointer hover:opacity-95 transition group"
+                    onClick={() => {
+                      setSelectedModalImage({ ...aiImage, artist, artistIdx: i });
+                      setShowImageModal(true);
+                    }}>
+                    <div className="relative w-full h-full flex items-center justify-center aspect-square">
+                      <img
+                        src={aiImage?.url}
+                        alt={artist.name}
+                        className="w-full h-full object-contain rounded-lg shadow-2xl"
+                      />
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition flex items-center justify-center">
+                        <div className="bg-white/90 px-4 py-2 rounded-full opacity-0 group-hover:opacity-100 transition">
+                          <p className="text-gray-900 font-bold text-sm">Click to enlarge</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )
+              });
+
+              bookPages.push({
+                type: 'info',
+                artistIdx: i,
+                title: `${artist.name} Info`,
+                pageNumber: 6 + (i * 2),
+                content: (
+                  <div className="w-full h-full bg-white flex items-center justify-center">
+                    <img 
+                      src={`/book-pages/${artistInfoPages[i]}`}
+                      alt={`${artist.name} Info`}
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
+                )
+              });
+            }
+
+            // PAGE 29: Timeline of Great Masters
+            bookPages.push({
+              type: 'timeline',
+              title: 'Timeline of Great Masters',
+              pageNumber: 29,
+              content: (
+                <div className="w-full h-full bg-white flex items-center justify-center">
+                  <img src="/book-pages/timeline.png" alt="Timeline" className="w-full h-full object-contain" />
+                </div>
+              )
+            });
+
+            // PAGE 30: 12-Image Grid Gallery
+            bookPages.push({
+              type: 'gallery-grid',
+              title: 'Your Complete Gallery',
+              pageNumber: 30,
+              content: (
+                <div className="w-full h-full bg-gradient-to-br from-amber-50 to-orange-50 flex flex-col items-center justify-center p-8">
+                  <h3 className="text-3xl font-bold text-center mb-6 text-gray-800">Your 12 Masterpiece Portraits</h3>
+                  <div className="grid grid-cols-4 grid-rows-3 gap-4 w-full h-[calc(100%-4rem)]">
+                    {Object.keys(selectedVariations).map((artistIdx, index) => {
+                      const variation = selectedVariations[parseInt(artistIdx)];
+                      const artist = artists[parseInt(artistIdx)];
+                      return (
+                        <div key={index} className="relative bg-white rounded-lg shadow-lg overflow-hidden border-2 border-amber-200">
+                          <img 
+                            src={variation.url} 
+                            alt={artist.name}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )
+            });
+
+            // PAGE 31: Conclusion
+            bookPages.push({
+              type: 'conclusion',
+              title: 'Conclusion',
+              pageNumber: 31,
+              content: (
+                <div className="w-full h-full bg-white flex items-center justify-center">
+                  <img src="/book-pages/conclusion.png" alt="Conclusion" className="w-full h-full object-contain" />
+                </div>
+              )
+            });
+
+            // PAGE 32: QR Code
+            bookPages.push({
+              type: 'qr-code',
+              title: 'QR Code',
+              pageNumber: 32,
+              content: (
+                <div className="w-full h-full bg-white flex items-center justify-center">
+                  <img src="/book-pages/qr-code.png" alt="QR Code" className="w-full h-full object-contain" />
+                </div>
+              )
+            });
+
+            // BACK COVER (NOT COUNTED AS PAGE)
+            bookPages.push({
+              type: 'full-cover-back',
+              title: 'Back Cover',
+              isNotPageNumbered: true,
+              content: (
+                <div className="w-full h-full bg-gray-100 flex items-center justify-center p-4 relative">
+                  <div className="relative w-full h-full max-w-full" style={{ aspectRatio: '19/10.25' }}>
+                    <img 
+                      src="/book-pages/cover-full.png" 
+                      alt="Full Book Cover (Back)"
+                      className="w-full h-full object-contain"
+                    />
+                    <div 
+                      className="absolute text-white font-bold text-right"
+                      style={{
+                        top: '14%',
+                        right: '7.5%',
+                        width: '33%',
+                        fontSize: 'clamp(2.2rem, 4vw, 5.5rem)',
+                        lineHeight: '0.95',
+                        textShadow: '3px 3px 6px rgba(0,0,0,0.4)',
+                        fontFamily: 'serif',
+                        letterSpacing: '-0.01em',
+                        pointerEvents: 'none'
+                      }}>
+                      {customerName || 'Your Name'}
+                    </div>
+                  </div>
+                  <button
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      const newName = prompt('Enter name for cover:', customerName || 'Your Name');
+                      if (newName !== null && newName.trim()) {
+                        const trimmedName = newName.trim();
+                        setCustomerName(trimmedName);
+                        console.log('🔄 Updating name to:', trimmedName);
+                        await saveSession({ customer_name: trimmedName });
+                      }
+                    }}
+                    className="absolute top-4 right-4 flex items-center gap-1 text-pink-700 hover:text-pink-900 text-sm bg-white px-4 py-2 rounded-full shadow-xl z-20 hover:bg-pink-50 transition font-bold border-2 border-pink-200">
+                    <Edit2 className="w-4 h-4" />
+                    Edit Name
+                  </button>
+                </div>
+              )
+            });
+
+            const totalPages = bookPages.length;
+            const totalNumberedPages = bookPages.filter(p => p.pageNumber).length;
+
+            const isFirstPage = currentBookPage === 0;
+            const isLastPage = currentBookPage === totalPages - 1;
+            
+            let leftPage = null;
+            let rightPage = null;
+
+            if (isFirstPage) {
+              rightPage = bookPages[0];
+            } else if (isLastPage) {
+              leftPage = bookPages[totalPages - 1];
+            } else {
+              const isOddIndex = currentBookPage % 2 === 1;
+              
+              if (isOddIndex) {
+                leftPage = bookPages[currentBookPage];
+                if (currentBookPage + 1 < totalPages) {
+                  rightPage = bookPages[currentBookPage + 1];
+                }
+              } else {
+                leftPage = bookPages[currentBookPage - 1];
+                rightPage = bookPages[currentBookPage];
+              }
+            }
+
+            return (
+              <>
+                <div className="mb-16">
+                  <h3 className="text-3xl font-bold text-center mb-8">📖 Flipbook Preview</h3>
+                  <p className="text-center text-gray-600 mb-4">
+                    {totalNumberedPages} pages • Navigate with arrows to flip through your book
+                  </p>
+
+                  {/* COLOR SELECTOR IN PREVIEW */}
+                  <div className="max-w-md mx-auto mb-8 bg-white rounded-2xl p-6 shadow-lg">
+                    <label className="block text-lg font-semibold text-gray-700 mb-3 text-center">
+                      Cover Color Preview
+                    </label>
+                    <div className="grid grid-cols-4 gap-3">
+                      {colorOptions.map((color) => (
+                        <button
+                          key={color.name}
+                          onClick={async () => {
+                            setCoverColor(color.name);
+                            await saveSession({ cover_color: color.name });
+                          }}
+                          className={`p-3 rounded-xl border-4 transition ${
+                            coverColor === color.name ? 'border-amber-600 scale-105' : 'border-gray-200'
+                          }`}>
+                          <div className={`w-full h-12 rounded-lg ${color.bg} mb-1`}></div>
+                          <p className="text-xs font-semibold">{color.label}</p>
+                        </button>
                       ))}
-                    </ul>
+                    </div>
                   </div>
-                  <div className="text-right ml-8">
-                    {product.originalPrice && (
-                      <div className="text-sm text-gray-500 line-through mb-1">${product.originalPrice}</div>
-                    )}
-                    <div className="text-4xl font-bold text-gray-900 mb-3">${product.price}</div>
-                    <button 
-                      onClick={() => openImageSelector(product)} 
-                      className={`${product.buttonColor} text-white px-8 py-3 rounded-full font-bold transition`}>
-                      Choose Artwork & Add
-                    </button>
+
+                  <div className="max-w-6xl mx-auto">
+                    <div className="bg-gray-100 rounded-3xl shadow-2xl p-8 mb-8">
+                      <div className="flex gap-4 justify-center items-stretch">
+                        {(currentBookPage === 0 || currentBookPage === totalPages - 1) ? (
+                          <div 
+                            className="bg-white rounded-2xl shadow-xl overflow-hidden w-full max-w-4xl">
+                            {bookPages[currentBookPage].content}
+                          </div>
+                        ) : (
+                          <>
+                            {leftPage && (
+                              <div 
+                                className="bg-white rounded-2xl shadow-xl overflow-hidden flex-1 max-w-md"
+                                style={{ aspectRatio: '1/1' }}>
+                                {leftPage.content}
+                              </div>
+                            )}
+                            {leftPage && rightPage && (
+                              <div className="w-1 bg-gradient-to-r from-gray-300 via-gray-400 to-gray-300 rounded-full"></div>
+                            )}
+                            {rightPage && (
+                              <div 
+                                className="bg-white rounded-2xl shadow-xl overflow-hidden flex-1 max-w-md"
+                                style={{ aspectRatio: '1/1' }}>
+                                {rightPage.content}
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+
+                      <div className="text-center mt-6">
+                        {isFirstPage && (
+                          <>
+                            <p className="text-xl font-bold text-gray-800">Front Cover</p>
+                            <p className="text-sm text-gray-500 mt-1">Not numbered</p>
+                          </>
+                        )}
+                        {isLastPage && (
+                          <>
+                            <p className="text-xl font-bold text-gray-800">Back Cover</p>
+                            <p className="text-sm text-gray-500 mt-1">Not numbered</p>
+                          </>
+                        )}
+                        {!isFirstPage && !isLastPage && leftPage && rightPage && (
+                          <>
+                            <p className="text-xl font-bold text-gray-800">
+                              Pages {leftPage.pageNumber}-{rightPage.pageNumber}
+                            </p>
+                            <p className="text-sm text-gray-500 mt-1">
+                              {leftPage.title} • {rightPage.title}
+                            </p>
+                          </>
+                        )}
+                        {!isFirstPage && !isLastPage && ((leftPage && !rightPage) || (!leftPage && rightPage)) && (
+                          <>
+                            <p className="text-xl font-bold text-gray-800">Page {leftPage?.pageNumber || rightPage?.pageNumber}</p>
+                            <p className="text-sm text-gray-500 mt-1">{leftPage?.title || rightPage?.title}</p>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex justify-between items-center px-4">
+                      <button
+                        onClick={() => {
+                          if (currentBookPage === 0) return;
+                          if (currentBookPage === totalPages - 1) {
+                            setCurrentBookPage(totalPages - 3);
+                          } else if (currentBookPage <= 2) {
+                            setCurrentBookPage(0);
+                          } else {
+                            setCurrentBookPage(currentBookPage - 2);
+                          }
+                        }}
+                        disabled={currentBookPage === 0}
+                        className={`flex items-center gap-2 px-8 py-4 rounded-full font-bold text-lg transition ${
+                          currentBookPage === 0
+                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                            : 'bg-amber-600 text-white hover:bg-amber-700 shadow-lg hover:shadow-xl'
+                        }`}>
+                        <ChevronLeft className="w-6 h-6" /> Previous
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          if (currentBookPage === totalPages - 1) return;
+                          if (currentBookPage === 0) {
+                            setCurrentBookPage(1);
+                          } else if (currentBookPage >= totalPages - 3) {
+                            setCurrentBookPage(totalPages - 1);
+                          } else {
+                            setCurrentBookPage(currentBookPage + 2);
+                          }
+                        }}
+                        disabled={currentBookPage === totalPages - 1}
+                        className={`flex items-center gap-2 px-8 py-4 rounded-full font-bold text-lg transition ${
+                          currentBookPage === totalPages - 1
+                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                            : 'bg-amber-600 text-white hover:bg-amber-700 shadow-lg hover:shadow-xl'
+                        }`}>
+                        Next <ChevronRight className="w-6 h-6" />
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
 
-          <div className="bg-white rounded-2xl p-8 mb-8 shadow-xl">
-            <h3 className="text-xl font-bold mb-4 text-center">Your Cart</h3>
-            <div className="space-y-2 mb-4">
-              <div className="flex justify-between py-2 border-b">
-                <span>12-Page Masterpiece Book</span>
-                <span className="font-bold">$49.99</span>
-              </div>
-              {cartItems.map((item, idx) => (
-                <div key={idx} className="flex justify-between text-green-600 py-2 border-b">
-                  <div className="flex-1">
-                    <span className="font-semibold">+ {item.name}</span>
-                    <p className="text-xs text-gray-500">featuring {item.artistName}</p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="font-bold">${item.price.toFixed(2)}</span>
+                {/* IMAGE MODAL WITH "CHANGE THIS IMAGE" BUTTON */}
+                {showImageModal && selectedModalImage && (
+                  <div
+                    className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
+                    onClick={() => setShowImageModal(false)}>
                     <button
-                      onClick={() => removeFromCart(item.id)}
-                      className="text-red-500 hover:text-red-700 p-1 hover:bg-red-50 rounded"
-                      title="Remove from cart">
-                      <X className="w-4 h-4" />
+                      onClick={() => setShowImageModal(false)}
+                      className="absolute top-4 right-4 bg-white text-gray-900 p-3 rounded-full hover:bg-gray-200 transition z-10">
+                      <X className="w-6 h-6" />
                     </button>
+                    <div className="max-w-5xl w-full">
+                      <img
+                        src={selectedModalImage.url}
+                        alt={selectedModalImage.artist?.name}
+                        className="w-full h-auto rounded-lg shadow-2xl mb-6"
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                      <div className="text-center text-white mb-6">
+                        <p className="text-2xl md:text-3xl font-bold">{selectedModalImage.artist?.name}</p>
+                        <p className="text-lg md:text-xl text-gray-300 mt-2">{selectedModalImage.artist?.period}</p>
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedArtistForChange(selectedModalImage.artistIdx);
+                          setShowArtistModal(true);
+                          setShowImageModal(false);
+                        }}
+                        className="w-full max-w-md mx-auto block bg-amber-600 hover:bg-amber-700 text-white py-4 px-8 rounded-full font-bold text-lg transition">
+                        Don't like this image? Click here to change it
+                      </button>
+                    </div>
                   </div>
+                )}
+
+                {/* ARTIST CHANGE MODAL */}
+                {showArtistModal && selectedArtistForChange !== null && (
+                  <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-3xl p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+                      <div className="flex justify-between items-center mb-6">
+                        <h3 className="text-3xl font-bold">
+                          Choose New {artists[selectedArtistForChange].name} Portrait
+                        </h3>
+                        <button
+                          onClick={() => {
+                            setShowArtistModal(false);
+                            setSelectedArtistForChange(null);
+                          }}
+                          className="p-2 hover:bg-gray-100 rounded-full">
+                          <X className="w-6 h-6" />
+                        </button>
+                      </div>
+
+                      {isGenerating ? (
+                        <div className="text-center py-12">
+                          <Loader className="w-16 h-16 text-amber-600 animate-spin mx-auto mb-4" />
+                          <p className="text-xl font-bold">Generating new variations...</p>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="grid grid-cols-2 gap-6 mb-6">
+                            {generatedImages[selectedArtistForChange]?.map((img, idx) => (
+                              <button
+                                key={idx}
+                                onClick={() => selectNewVariation(selectedArtistForChange, img)}
+                                className="relative group">
+                                <div className="overflow-hidden rounded-xl shadow-lg hover:shadow-2xl transition">
+                                  <img
+                                    src={img.url}
+                                    alt={`Variation ${idx + 1}`}
+                                    className="w-full h-64 object-cover group-hover:scale-110 transition duration-300"
+                                  />
+                                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                                    <div className="bg-white rounded-full p-4">
+                                      <Check className="w-8 h-8 text-amber-600" />
+                                    </div>
+                                  </div>
+                                </div>
+                                <p className="text-center mt-2 font-semibold">Click to Select</p>
+                              </button>
+                            ))}
+                          </div>
+
+                          <button
+                            onClick={() => regenerateArtist(selectedArtistForChange)}
+                            className="w-full bg-purple-600 hover:bg-purple-700 text-white py-4 rounded-full font-bold text-lg transition">
+                            🔄 Generate 2 New Variations
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* DEDICATION EDIT MODAL */}
+                {showEditDedication && (
+                  <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-3xl p-6 md:p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                      <div className="flex justify-between items-center mb-6">
+                        <h3 className="text-xl md:text-2xl font-bold">Edit Dedication</h3>
+                        <button
+                          onClick={() => setShowEditDedication(false)}
+                          className="p-2 hover:bg-gray-100 rounded-full">
+                          <X className="w-6 h-6" />
+                        </button>
+                      </div>
+
+                      <textarea
+                        value={editedDedication}
+                        onChange={(e) => {
+                          if (e.target.value.length <= 300) {
+                            setEditedDedication(e.target.value);
+                          }
+                        }}
+                        placeholder="Enter your dedication message..."
+                        maxLength={300}
+                        rows={6}
+                        className="w-full px-4 md:px-6 py-3 md:py-4 border-2 border-gray-300 rounded-xl focus:border-amber-600 focus:outline-none resize-none mb-2"
+                      />
+                      <p className="text-right text-sm text-gray-500 mb-6">
+                        {editedDedication.length}/300 characters
+                      </p>
+
+                      <div className="flex flex-col md:flex-row gap-4">
+                        <button
+                          onClick={() => setShowEditDedication(false)}
+                          className="flex-1 px-6 py-3 bg-gray-200 text-gray-700 rounded-full font-bold hover:bg-gray-300 transition">
+                          Cancel
+                        </button>
+                        <button
+                          onClick={handleSaveDedication}
+                          className="flex-1 px-6 py-3 bg-gradient-to-r from-amber-600 to-red-600 text-white rounded-full font-bold hover:shadow-xl transition">
+                          Save Changes
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Cover Type Selector */}
+                <CoverTypeSelector 
+                  selectedCover={coverType}
+                  onCoverChange={handleCoverChange}
+                />
+
+                <div className="max-w-md mx-auto bg-white rounded-3xl p-6 md:p-8 shadow-xl">
+                  <h3 className="text-xl md:text-2xl font-bold mb-6 text-center">Order Summary</h3>
+                  <div className="space-y-4 mb-6">
+                    <div className="flex justify-between py-3 border-b">
+                      <span>{coverType === 'softcover' ? 'Softcover' : 'Hardcover'} Book</span>
+                      <span className="font-bold">${price.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between py-3">
+                      <span>Shipping</span>
+                      <span className="text-green-600 font-semibold">FREE</span>
+                    </div>
+                    <div className="flex justify-between py-4 bg-amber-50 rounded-xl px-4">
+                      <span className="font-bold">Total</span>
+                      <span className="text-2xl font-bold text-amber-600">${price.toFixed(2)}</span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleCheckout}
+                    className="w-full bg-gradient-to-r from-amber-600 to-red-600 text-white py-4 rounded-full font-bold hover:shadow-xl transition">
+                    Proceed to Secure Checkout →
+                  </button>
                 </div>
-              ))}
-              <div className="flex justify-between py-4 bg-amber-50 rounded-xl px-4 mt-4">
-                <span className="text-xl font-bold">Total:</span>
-                <span className="text-3xl font-bold text-amber-600">${cartTotal.toFixed(2)}</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="text-center space-y-4">
-            <button onClick={handleCheckout} className="w-full max-w-md bg-gradient-to-r from-amber-600 to-red-600 text-white py-5 rounded-full font-bold text-xl hover:shadow-xl transition">
-              Proceed to Secure Checkout →
-            </button>
-            <button onClick={handleCheckout} className="text-gray-600 hover:text-gray-800 text-sm">
-              No thanks, continue with just the book
-            </button>
-          </div>
-
-          <div className="mt-8 text-center">
-            <p className="text-sm text-gray-500">🔒 Secure checkout • 💯 100% satisfaction guarantee • 📦 Free shipping</p>
-          </div>
+              </>
+            );
+          })()}
         </section>
       )}
+      {/* SUCCESS STEP */}
       {currentStep === 'success' && (
         <section className="max-w-4xl mx-auto px-4 py-20">
           <div className="bg-white rounded-3xl p-12 shadow-2xl text-center">
@@ -1432,10 +1746,9 @@ export default function MasterpieceMe() {
                 setCurrentStep('home'); 
                 setUploadedImage(null);
                 setSessionId(null);
-                setCartItems([]);
-                setCartTotal(49.99);
                 setCustomerName('');
                 setDedication('');
+                setEditedDedication('');
                 window.history.pushState({}, '', '/'); 
               }} 
               className="mt-8 bg-gradient-to-r from-amber-600 to-red-600 text-white px-12 py-4 rounded-full font-bold hover:shadow-xl transition">
