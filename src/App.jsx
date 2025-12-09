@@ -283,6 +283,12 @@ export default function MasterpieceMe() {
     if (file) processFile(file);
   };
 
+  const handleCaptchaSuccess = (token) => {
+    setCaptchaToken(token);
+    setCaptchaVerified(true);
+    console.log('✅ Captcha verified');
+  };
+
   const processFile = async (file) => {
     if (!captchaToken) {
       alert('Please complete the security check first');
