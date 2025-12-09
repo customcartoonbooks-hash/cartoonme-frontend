@@ -735,9 +735,9 @@ export default function MasterpieceMe() {
             )}
           </div>
 
-          {uploadedImage && !captchaVerified && (
+          {!captchaVerified && (
             <div className="mt-8 text-center">
-              <p className="text-gray-600 mb-4">Verify you're human to continue:</p>
+              <p className="text-gray-600 mb-4">Complete security check to continue:</p>
               <div className="flex justify-center">
                 <Turnstile
                   siteKey={TURNSTILE_SITE_KEY}
@@ -745,6 +745,12 @@ export default function MasterpieceMe() {
                   theme="light"
                 />
               </div>
+            </div>
+          )}
+
+          {captchaVerified && !uploadedImage && (
+            <div className="mt-8 text-center">
+              <p className="text-green-600 font-semibold">✓ Verified! You can now upload your photo above.</p>
             </div>
           )}
 
