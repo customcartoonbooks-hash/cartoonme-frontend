@@ -140,6 +140,7 @@ export default function MasterpieceMe() {
       petPrompt: 'American Regionalist portrait of a pet (dog, cat, bird, or reptile) dressed as the farmer/man from Grant Wood\'s American Gothic, standing resolutely in front of a white clapboard house with a Gothic window. The pet is posed with a severe, stoic dignity, its expression serious and earnest. The pet\'s markings and features are stylized with clean, linear forms and a smooth, enamel-like finish. The background is a simple, muted landscape in earthy browns and greens, evoking rural Midwestern honesty. The composition captures the pet\'s enduring character through folk art influence and simplified, precise forms.'
     }
   ];
+
   // ============================================================================
   // HANDLER FUNCTIONS AND EFFECTS
   // ============================================================================
@@ -609,7 +610,9 @@ export default function MasterpieceMe() {
       console.error('Failed to save cover type:', error);
     }
   };
-  <div className="min-h-screen bg-gradient-to-b from-amber-50 to-white">
+
+  return (
+      <div className="min-h-screen bg-gradient-to-b from-amber-50 to-white">
       {/* HEADER */}
       <header className="bg-white shadow-sm sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
@@ -1022,6 +1025,7 @@ export default function MasterpieceMe() {
           </div>
         </section>
       )}
+
       {/* PREVIEW STEP - COMPLETE WITH FULL FLIPBOOK */}
       {currentStep === 'preview' && (
         <section className="max-w-7xl mx-auto px-4 py-12">
@@ -1686,6 +1690,7 @@ export default function MasterpieceMe() {
           })()}
         </section>
       )}
+
       {/* SUCCESS STEP */}
       {currentStep === 'success' && (
         <section className="max-w-4xl mx-auto px-4 py-20">
