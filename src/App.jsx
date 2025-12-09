@@ -5,6 +5,7 @@ import CoverTypeSelector from './components/CoverTypeSelector';
 
 const BACKEND_URL = 'https://cartoonme-backend.onrender.com';
 const CLOUDFLARE_SITE_KEY = '0x4AAAAAAB6No5gcHaleduBl';
+const TURNSTILE_SITE_KEY = CLOUDFLARE_SITE_KEY;
 
 export default function MasterpieceMe() {
   const [currentStep, setCurrentStep] = useState('home');
@@ -26,15 +27,23 @@ export default function MasterpieceMe() {
   const [historyIndex, setHistoryIndex] = useState({});
   const [isDragging, setIsDragging] = useState(false);
   const [showCopyNotification, setShowCopyNotification] = useState(false);
+  const [showCopiedNotification, setShowCopiedNotification] = useState(false);
   const [showSaveNotification, setShowSaveNotification] = useState(false);
+  const [showAutosaveNotification, setShowAutosaveNotification] = useState(false);
   const [estimatedTimeLeft, setEstimatedTimeLeft] = useState(40);
   const [isSessionLoading, setIsSessionLoading] = useState(false);
   const [orderNumber, setOrderNumber] = useState(null);
   const [currentBookPage, setCurrentBookPage] = useState(0);
   const [captchaToken, setCaptchaToken] = useState(null);
+  const [captchaVerified, setCaptchaVerified] = useState(false);
   const [verificationStep, setVerificationStep] = useState('input');
+  const [verificationSent, setVerificationSent] = useState(false);
+  const [contactVerified, setContactVerified] = useState(false);
   const [contactMethod, setContactMethod] = useState('email');
+  const [email, setEmail] = useState('');
+  const [sms, setSms] = useState('');
   const [verificationCode, setVerificationCode] = useState(['', '', '', '', '', '']);
+  const [verificationError, setVerificationError] = useState('');
   const [contactValue, setContactValue] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
   const [customerName, setCustomerName] = useState('');
@@ -45,6 +54,9 @@ export default function MasterpieceMe() {
   const [editedDedication, setEditedDedication] = useState('');
   const [showArtistModal, setShowArtistModal] = useState(false);
   const [selectedArtistForChange, setSelectedArtistForChange] = useState(null);
+  
+  const fileInputRef = useRef(null);
+  const codeInputsRef = useRef([]);
   const codeInputRefs = useRef([]);
 
   const colorOptions = [
