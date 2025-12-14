@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Upload, ArrowRight, Check, Loader, Copy, Home, Undo, Redo, Clock, ChevronLeft, ChevronRight, X, Mail, Phone, Edit2 } from 'lucide-react';
+import { Upload, ArrowRight, Check, Loader, Copy, Home, Undo, Redo, Clock, ChevronLeft, ChevronRight, X, Mail, Phone, Edit2, Link } from 'lucide-react';
 import { Turnstile } from '@marsidev/react-turnstile';
 import CoverTypeSelector from './components/CoverTypeSelector';
 
@@ -11,7 +11,7 @@ export default function MasterpieceMe() {
   const [currentStep, setCurrentStep] = useState('home');
   const [uploadedImage, setUploadedImage] = useState(null);
   const [coverType, setCoverType] = useState('hardcover');
-  const [coverColor, setCoverColor] = useState('pink');
+  const [coverColor, setCoverColor] = useState('blue');
   const [price, setPrice] = useState(49.99);
   const [sessionId, setSessionId] = useState(null);
   const [selectedGender, setSelectedGender] = useState(null);
@@ -54,16 +54,20 @@ export default function MasterpieceMe() {
   const [editedDedication, setEditedDedication] = useState('');
   const [showArtistModal, setShowArtistModal] = useState(false);
   const [selectedArtistForChange, setSelectedArtistForChange] = useState(null);
+  const [isPreviewMode, setIsPreviewMode] = useState(false);
+  const [showSampleBrowser, setShowSampleBrowser] = useState(false);
+  const [currentSampleBook, setCurrentSampleBook] = useState('male');
   
   const fileInputRef = useRef(null);
   const codeInputsRef = useRef([]);
   const codeInputRefs = useRef([]);
 
   const colorOptions = [
-    { name: 'pink', bg: 'bg-pink-500', label: 'Hot Pink' },
-    { name: 'teal', bg: 'bg-teal-500', label: 'Teal' },
-    { name: 'blue', bg: 'bg-blue-500', label: 'Bright Blue' },
-    { name: 'gray', bg: 'bg-gray-700', label: 'Dark Gray' }
+    { name: 'blue', bg: 'bg-blue-500', label: 'Blue', cover: 'blue-cover.jpg' },
+    { name: 'dark-green', bg: 'bg-emerald-800', label: 'Dark Green', cover: 'dark-green-cover.jpg' },
+    { name: 'green', bg: 'bg-green-500', label: 'Green', cover: 'green-cover.jpg' },
+    { name: 'orange', bg: 'bg-orange-500', label: 'Orange', cover: 'orange-cover.jpg' },
+    { name: 'purple', bg: 'bg-purple-500', label: 'Purple', cover: 'purple-cover.jpg' }
   ];
 
   const artists = [
@@ -72,86 +76,144 @@ export default function MasterpieceMe() {
       period: 'Renaissance',
       malePrompt: 'Renaissance portrait characterized by masterful sfumato and divine serenity. Masculine figure in three-quarter view with solemn blessed expression, one hand raised with two fingers extended in gesture of benediction, the other hand holding crystalline orb. Refined noble features with contemplative gaze. Rich blue robes with intricate gold embroidery and red undergarment visible. Warm golden-brown atmospheric tones, luminous skin rendered with delicate glazing. Dark background with subtle gradations, imperceptible brushwork creating smooth transitions. Capturing spiritual authority and Renaissance ideals of human divinity through anatomical precision and psychological depth. Preserve original eyewear if present, do not add or remove glasses. Maintain original facial hair style exactly as it appears, do not add or remove facial hair. Maintain original hair length exactly as it appears.',
       femalePrompt: 'Renaissance portrait featuring a single feminine subject with soft delicate sfumato technique, subtle enigmatic smile with mysterious knowing expression. Warm golden-brown earth tones, hands delicately folded or crossed in contemplative pose. Misty atmospheric landscape background with winding paths and distant mountains, three-quarter view revealing elegant posture. Oil painting with imperceptibly smooth transitions and invisible brushstrokes, dark draped dress with fine pleating details. Veil or translucent head covering, luminous porcelain skin tones with delicate glazes. Contemplative timeless mood capturing inner grace, psychological depth, and sophisticated Renaissance femininity. Only one female figure present in composition. Preserve original eyewear if present, do not add or remove glasses. Maintain original hair length exactly as it appears.',
-      petPrompt: 'Renaissance portrait of a pet (dog, cat, bird, or reptile) in a noble, serene pose, rendered with masterful sfumato. The pet has an enigmatic, almost human-like expression and is adorned with a delicate Renaissance-style collar or small jeweled pendant. A misty, atmospheric landscape with winding paths and distant mountains forms the background. The fur/feathers/scales are depicted with luminous, soft transitions and meticulous detail, capturing the pet\'s inner grace and dignity. Oil painting with imperceptible brushstrokes, warm golden-brown earth tones, and delicate glazing. The pet should embody Renaissance ideals of elegance and contemplation.'
+      malePetPrompt: 'Renaissance portrait of a pet characterized by masterful sfumato and divine serenity. Masculine pet figure in three-quarter view with solemn blessed expression. The pet\'s paw is raised with two digits extended in gesture of benediction, the other paw resting on a crystalline orb. Refined noble features with contemplative gaze. Rich blue robes with intricate gold embroidery are draped over the pet, with a red undergarment visible. Warm golden-brown atmospheric tones, luminous fur/scale/feather texture rendered with delicate glazing. Dark background with subtle gradations, imperceptible brushwork. Capturing spiritual authority and Renaissance ideals of human divinity through anatomical precision and psychological depth.',
+      femalePetPrompt: 'Renaissance portrait of a pet featuring a single feminine pet subject with soft delicate sfumato technique, a subtle enigmatic smile/expression with mysterious knowing expression. Warm golden-brown earth tones, paws delicately folded or crossed in a contemplative pose. Misty atmospheric landscape background with winding paths and distant mountains, three-quarter view revealing elegant posture. The pet is adorned in a dark, finely pleated draped garment. A light veil or intricate head covering is worn by the pet, with luminous porcelain fur/scale/feather texture and delicate glazes. Contemplative timeless mood capturing inner grace, psychological depth, and sophisticated Renaissance femininity. Only one female pet figure present in composition.'
     },
     { 
       name: 'Michelangelo', 
       period: 'Renaissance',
       malePrompt: 'Create a full-body marble statue of the man from the original image, in a classical pose, located in a grand museum hall. The statue, including the head, should be made of white marble and faithfully retain his facial features, including his glasses if present, his beard/stubble, and his hairstyle. He should be adorned with simple, draped classical robes covering his lower body, leaving his chest and arms exposed. The lighting should evoke a serene museum atmosphere, highlighting the marble texture and form.',
       femalePrompt: 'Renaissance portrait with idealized feminine beauty in sacred monumental style, powerful graceful features with classical proportions and sculptural presence. Flowing robes and gathered drapery in rich earth tones of terracotta, deep azure blues, warm ochres, and sage greens. Surrounded by celestial elements - soft-winged cherubic putti, swirling heavenly clouds, painted architectural framework with coffered vaults. Seated or reclining pose with turned contrapposto torso, one arm extended in graceful gesture. Strong chiaroscuro creates dramatic divine illumination, expression blending tender maternal warmth with spiritual authority. Monumental fresco-like composition with vibrant colors and bold sculptural forms. Only one female figure present in composition. Preserve original eyewear if present, do not add or remove glasses. Maintain original hair length exactly as it appears.',
-      petPrompt: 'A majestic full-body marble statue of the pet (dog, cat, bird, or reptile) in a classical, heroic pose, located in a grand museum hall. The statue should faithfully capture the pet\'s unique features, rendered in pristine white marble with exquisite detail, embodying idealized classical form and monumental presence. The pet is sculpted with a dignified, almost human-like expression. Simple, elegant classical drapery is artfully arranged around the pet, enhancing its heroic bearing. The lighting evokes a serene museum atmosphere, highlighting the luminous marble texture and sculptural form. The pet becomes a timeless work of art, similar to Michelangelo\'s masterpieces.'
+      malePetPrompt: 'Create a full-body white Carrara marble statue of the pet from the original image, in a powerful, dynamic classical pose (contrapposto), located in a grand museum hall. The statue should faithfully retain the pet\'s facial features and, if applicable, their glasses, beard/stubble, and fur/hair style. The musculature and form of the pet should be idealized and heroic, adorned with simple, draped classical robes covering the lower body/legs, leaving the chest and front paws exposed. The lighting should evoke a serene museum atmosphere, highlighting the marble\'s polished texture and powerful form.',
+      femalePetPrompt: 'Create a full-body white Carrara marble statue of the pet from the original image, in an elegant, serene classical pose, located in a grand museum hall. The statue should faithfully retain the pet\'s facial features and, if applicable, their glasses and fur/hair style. The form is graceful and idealized, with flowing drapery and gathered robes carved in high relief, emphasizing delicate lines and movement, covering most of the body except the face and one elegant paw. The lighting should evoke a serene museum atmosphere, highlighting the marble\'s polished texture and gentle, flowing form.'
     },
     { 
       name: 'Raphael', 
       period: 'High Renaissance',
       malePrompt: 'High Renaissance portrait in the refined manner of Raphael\'s Portrait of Baldassare Castiglione, featuring balanced harmony and noble restraint. The subject\'s masculine features convey intelligence and calm confidence, framed by soft chiaroscuro and a luminous warm tone. The subject is wearing the elegant attire of a Renaissance courtier: a dark doublet with a trim of grey-brown squirrel fur, a bloused creamy-white shirt visible at the chest, and a black beret atop a simple turban-style cap. Subtle brushwork and a limited palette of blacks, creams, warm flesh tones, and muted greys create elegant simplicity. The figure sits in poised three-quarter view, radiating cultivated dignity and introspection, encapsulating Raphael\'s ideal of human grace and classical serenity.',
       femalePrompt: 'High Renaissance portrait with soft luminous feminine beauty and perfect classical proportions. Subject in elegant three-quarter pose wearing sumptuous Renaissance gown with puffed sleeves, rich fabrics of silk and velvet in warm earth tones. Delicate jewelry - pearl necklace, rings, or ornate headdress with translucent veil. One hand delicately positioned near chest or holding small object, displaying graceful fingers. Serene expression with gentle direct gaze, porcelain skin with warm rosy undertones. Balanced harmonious composition with architectural elements or soft landscape background. Refined invisible brushwork, luminous glazing technique, capturing idealized feminine virtue, dignity, and timeless Renaissance elegance. Only one female figure present in composition. Preserve original eyewear if present, do not add or remove glasses. Maintain original hair length exactly as it appears.',
-      petPrompt: 'High Renaissance portrait of a pet (dog, cat, bird, or reptile) in the elegant style of Raphael, inspired by noble human portraits. The pet is in a refined three-quarter view, with dignified bearing and an intelligent, gentle expression. It wears a miniature, richly embroidered Renaissance-style collar or cap. The background features a harmonious landscape with soft lighting. The pet\'s fur/feathers/scales are rendered with refined, smooth brushwork, emphasizing luminous and balanced forms, evoking a sense of aristocratic grace and classical composition.'
+      malePetPrompt: 'High Renaissance portrait of a pet in the refined manner of Raphael\'s Portrait of Baldassare Castiglione, featuring balanced harmony and noble restraint. The masculine pet\'s features convey intelligence and calm confidence, framed by soft chiaroscuro and a luminous warm tone. The pet is wearing the elegant attire of a Renaissance courtier: a dark doublet with a trim of grey-brown squirrel fur, a bloused creamy-white shirt visible at the chest, and a black beret atop a simple turban-style cap. Subtle brushwork and a limited palette create elegant simplicity. The pet sits in poised three-quarter view, radiating cultivated dignity and introspection. Preserve original eyewear if present, do not add or remove glasses.',
+      femalePetPrompt: 'High Renaissance portrait of a pet with soft luminous feminine beauty and perfect classical proportions. Subject in elegant three-quarter pose wearing sumptuous Renaissance gown with puffed sleeves, rich fabrics of silk and velvet in warm earth tones. Delicate jewelry—pearl necklace, rings, or ornate headdress with translucent veil—is worn by the pet. One paw delicately positioned near the chest or holding a small object, displaying graceful digits. Serene expression with gentle direct gaze, porcelain fur/scale/feather texture with warm rosy undertones. Balanced harmonious composition with architectural elements or soft landscape background.'
     },
     { 
       name: 'Rembrandt', 
       period: 'Baroque',
       malePrompt: 'Baroque portrait depicting mastery of light and introspection with dramatic chiaroscuro. The masculine figure wears rich period costume - velvet cap or beret, fur-trimmed robes, ornate gold chain across chest. Emerging from deep shadow, bathed in warm amber and golden tones from single light source. Thick impasto brushwork and layered glazes reveal every crease and contour, weathered hands visible holding painter\'s tools or resting contemplatively. Dark velvety backdrop emphasizes the illuminated face and costume details, capturing profound psychological depth, wisdom, and life experience through masterful play of light and shadow. Preserve original eyewear if present, do not add or remove glasses. Maintain original facial hair style exactly as it appears, do not add or remove facial hair.',
       femalePrompt: 'Baroque portrait with soft feminine features illuminated by warm golden light from single window source. Subject adorned in sumptuous fabrics - rich brocade dress, fur trim, pearl necklaces and jewelry catching the light. Tender gaze with gentle introspective expression, perhaps holding flowers or wearing elaborate headdress with feathers. Rich jewel tones of deep crimson, amber gold, and warm browns create intimate atmosphere. Soft shadows with luminous highlights on silk and velvet textures, layered oil painting technique with subtle glazing. Luxurious period costume details emerge from darkness, conveying warmth, domestic intimacy, and graceful humanity. Only one female figure present in composition. Preserve original eyewear if present, do not add or remove glasses. Maintain original hair length exactly as it appears.',
-      petPrompt: 'Baroque portrait of a pet (dog, cat, bird, or reptile) in the dramatic chiaroscuro style of Rembrandt. The pet emerges from deep shadows, bathed in a warm, golden light from a single source, highlighting its fur/feathers/scales with rich amber and brown tones. The pet has an introspective, wise expression, conveying psychological depth. Visible impasto brushwork and thick layered paint application emphasize the texture of its coat or plumage, giving it a dignified, almost aged presence. The dark, velvety background further accentuates the dramatic lighting.'
+      malePetPrompt: 'Baroque portrait of a pet depicting mastery of light and introspection with dramatic chiaroscuro. The masculine pet figure wears rich period costume—velvet cap or beret, fur-trimmed robes, ornate gold chain across the chest. Emerging from deep shadow, bathed in warm amber and golden tones from a single light source. Thick impasto brushwork and layered glazes reveal every crease and contour, weathered paws visible resting contemplatively. Dark velvety backdrop emphasizes the illuminated face and costume details, capturing profound psychological depth, wisdom, and life experience.',
+      femalePetPrompt: 'Baroque portrait of a pet with soft feminine features illuminated by warm golden light from a single window source. Subject adorned in sumptuous fabrics—rich brocade dress, fur trim, pearl necklaces and jewelry catching the light. Tender gaze with gentle introspective expression, perhaps holding a small flower or wearing an elaborate headdress with feathers. Rich jewel tones of deep crimson, amber gold, and warm browns create an intimate atmosphere. Soft shadows with luminous highlights on silk and velvet textures. Luxurious pet period costume details emerge from darkness, conveying warmth, domestic intimacy, and graceful humanity. Only one female pet figure present in composition.'
     },
     { 
       name: 'Johannes Vermeer', 
       period: 'Dutch Golden Age',
       malePrompt: 'Dutch Golden Age portrait of a single masculine subject combining luminous domestic light with contemplative atmosphere. The man, rendered with crystalline precision, sits alone near a window bathed in soft daylight that spills across rich fabrics and wooden textures. Wearing period gentleman\'s attire with white collar and dark jacket. Refined brushwork, harmonious composition, and pearl-like highlights create serenity within an intimate interior. The scene conveys both stillness and quiet narrative tension, embodying mastery of light, texture, and psychological nuance. Only one male figure present in the composition. Preserve original eyewear if present, do not add or remove glasses. Maintain original facial hair style exactly as it appears, do not add or remove facial hair.',
       femalePrompt: 'Dutch Golden Age portrait of a single feminine subject, a close-up three-quarter view with a gentle expression and direct gaze, wearing a simple yellow and blue turban and a large pearl earring. The background is a flat, very dark, indeterminate tone. The light is diffused, coming from the upper left, highlighting the porcelain skin and the textures of the fabric. The overall style embodies the pearl-like luminosity, refined invisible brushwork, and psychological intimacy of Johannes Vermeer\'s \'Girl with a Pearl Earring\'. Only one female figure present in the composition. Preserve original eyewear if present, do not add or remove glasses. Maintain original hair length exactly as it appears.',
-      petPrompt: 'Dutch Golden Age portrait of the pet (dog, cat, bird, or reptile) as the "Girl with a Pearl Earring" by Vermeer. The pet is shown in a close-up, three-quarter view, with its head turned to gaze directly at the viewer. It wears a characteristic blue and yellow draped head covering and a prominent pearl earring (or a pet-appropriate substitute like a small, shining charm). The background is a flat, very dark, indeterminate tone, and the pet\'s fur/feathers/scales are rendered with crystalline clarity and pearl-like luminosity, emphasizing soft diffused light. The overall effect is both iconic and whimsical, capturing the pet\'s charm in a masterfully intimate style.'
+      malePetPrompt: 'Dutch Golden Age portrait of a single masculine pet subject combining luminous domestic light with a contemplative atmosphere. The pet, rendered with crystalline precision, sits alone near a window bathed in soft daylight that spills across rich fabrics and wooden textures. Wearing period gentleman\'s attire with a white collar and dark jacket. Refined brushwork, harmonious composition, serenity within an intimate interior. The scene conveys both stillness and quiet narrative tension, embodying mastery of light, texture, and psychological nuance. Only one male pet figure present in the composition.',
+      femalePetPrompt: 'Dutch Golden Age portrait of a single feminine pet subject, a close-up three-quarter view with a gentle expression and direct gaze, wearing a simple yellow and blue turban and a large pearl earring. The background is a flat, very dark, indeterminate tone. The light is diffused, coming from the upper left, highlighting the porcelain fur/scale/feather texture and the textures of the fabric. The overall style embodies the pearl-like luminosity, refined invisible brushwork, and psychological intimacy of Johannes Vermeer\'s \'Girl with a Pearl Earring\'.'
     },
     { 
       name: 'Claude Monet', 
       period: 'Impressionism',
       malePrompt: 'Impressionist portrait set against vibrant seaside light and coastal gardens. The masculine figure is captured in natural sunlight with flickering brushstrokes and broken color. Loose painterly marks merge blues, ochres, and greens into shimmering atmospheric unity. The background evokes an airy coastal breeze and luminous sky, blending figure and nature in a symphony of color and movement, full of spontaneity and plein-air vitality. Preserve original eyewear if present, do not add or remove glasses. Maintain original facial hair style exactly as it appears, do not add or remove facial hair.',
       femalePrompt: 'Impressionist portrait with soft feminine features captured in natural sunlight, loose delicate brushstrokes, vibrant impressionistic colors with pinks, purples, and yellows, light filtering through fabric or flowers, outdoor garden or water lilies background, atmospheric dreamy effect, fleeting moment captured in motion, airy and light-filled composition, impressionistic spontaneity, emphasizing feminine grace in nature. Only one female figure present in composition. Preserve original eyewear if present, do not add or remove glasses. Maintain original hair length exactly as it appears.',
-      petPrompt: 'Impressionist portrait of a pet (dog, cat, bird, or reptile) basking in dappled sunlight within a vibrant outdoor garden or water lilies setting. The pet\'s fur/feathers/scales are rendered with loose, energetic brushstrokes and broken color, shimmering with blues, greens, and golden ochres. The background is an atmospheric, luminous blend of flowers, foliage, and perhaps shimmering water, creating a spontaneous and airy plein-air quality. The composition emphasizes light, color, and movement, capturing the pet\'s playful or serene presence in a natural, fleeting moment.'
+      malePetPrompt: 'Impressionist portrait of a pet set against vibrant seaside light and coastal gardens. The masculine pet figure is captured in natural sunlight with flickering brushstrokes and broken color. Loose painterly marks merge blues, ochres, and greens into shimmering atmospheric unity. The background evokes an airy coastal breeze and luminous sky, blending the pet figure and nature in a symphony of color and movement, full of spontaneity and plein-air vitality.',
+      femalePetPrompt: 'Impressionist portrait of a pet with soft feminine features captured in natural sunlight, loose delicate brushstrokes, vibrant impressionistic colors with pinks, purples, and yellows, light filtering through fabric or flowers. Outdoor garden or water lilies background, atmospheric dreamy effect, fleeting moment captured in motion, airy and light-filled composition, impressionistic spontaneity, emphasizing feminine grace in nature. Only one female pet figure present in composition.'
     },
     { 
       name: 'Vincent van Gogh', 
       period: 'Post-Impressionism',
-      malePrompt: 'Post-Impressionist portrait in the intense style of Vincent van Gogh, inspired by his male self-portraits from 1889, thick impasto brushstrokes with three-dimensional texture, masculine features with strong character, intense penetrating gaze with psychological depth, swirling energetic movement in background, vibrant color palette with cobalt blues, chrome yellows, and emerald greens, visible heavy paint application, expressive gestural brushwork, raw emotional intensity, textured surface with thick pigment, radiating energy lines, characteristic Van Gogh turbulent style, Starry Night background.',
-      femalePrompt: 'Post-Impressionist portrait with soft feminine features and emotional depth, thick impasto brushstrokes with heavily textured surface. Swirling Starry Night background with characteristic spiral patterns in deep blues and vibrant yellows, crescent moon and radiating stars in circular swirling motions, night sky with cypress silhouettes or village elements in distance. Vibrant colors of warm peaches in facial tones contrasting with cosmic blues and golden yellows, intense yet tender expression. Visible energetic paint application with distinctive circular brushwork patterns, capturing inner emotion and feminine warmth within celestial setting, expressive and lively composition with iconic swirling night sky energy. Only one female figure present in composition. Preserve original eyewear if present, do not add or remove glasses. Maintain original hair length exactly as it appears.',
-      petPrompt: 'Post-Impressionist portrait of a pet (dog, cat, bird, or reptile) in the intense, textured style of Vincent van Gogh, set against a dramatic, swirling Starry Night background. The pet\'s fur/feathers/scales are depicted with thick impasto brushstrokes and three-dimensional texture, conveying a vivid energy. The iconic swirling patterns of deep blues, vibrant yellows, and whites of the night sky, complete with a crescent moon and stars, engulf the background. The pet\'s expression is intense and full of character, rendered with visible, energetic paint application, blending its form with the turbulent, radiant energy of the cosmic landscape.'
+      malePrompt: 'Post-Impressionist portrait in the intense style of Vincent van Gogh, inspired by his male self-portraits from 1889, thick impasto brushstrokes with three-dimensional texture, masculine features with strong character, intense penetrating gaze with psychological depth, swirling energetic movement in background, vibrant color palette with cobalt blues, chrome yellows, and emerald greens, visible heavy paint application, expressive gestural brushwork, raw emotional intensity, textured surface with thick pigment, radiating energy lines, characteristic Van Gogh turbulent style, Starry Night background. Preserve original eyewear if present, do not add or remove glasses. Maintain original hair length exactly as it appears. Make sure that the people are not painted blue but are skin tones that Picasso would use',
+      femalePrompt: 'Post-Impressionist portrait with soft feminine features and emotional depth, thick impasto brushstrokes with heavily textured surface. Swirling Starry Night background with characteristic spiral patterns in deep blues and vibrant yellows, crescent moon and radiating stars in circular swirling motions, night sky with cypress silhouettes or village elements in distance. Vibrant colors of warm peaches in facial tones contrasting with cosmic blues and golden yellows, intense yet tender expression. Visible energetic paint application with distinctive circular brushwork patterns, capturing inner emotion and feminine warmth within celestial setting, expressive and lively composition with iconic swirling night sky energy. Only one female figure present in composition. Preserve original eyewear if present, do not add or remove glasses. Maintain original hair length exactly as it appears. Make sure that the people are not painted blue, use skin tones that Picasso would use.',
+      malePetPrompt: 'Post-Impressionist portrait of a pet in the intense style of Vincent van Gogh, inspired by his male self-portraits from 1889, thick impasto brushstrokes with three-dimensional texture. Masculine pet features with strong character, intense penetrating gaze with psychological depth, swirling energetic movement in background, vibrant color palette with cobalt blues, chrome yellows, and emerald greens, visible heavy paint application, expressive gestural brushwork, raw emotional intensity, Starry Night background.',
+      femalePetPrompt: 'Post-Impressionist portrait of a pet with soft feminine features and emotional depth, thick impasto brushstrokes with heavily textured surface. Swirling Starry Night background with characteristic spiral patterns in deep blues and vibrant yellows, crescent moon and radiating stars in circular swirling motions. Vibrant colors of warm peaches in facial tones contrasting with cosmic blues and golden yellows, intense yet tender expression. Visible energetic paint application with distinctive circular brushwork patterns, capturing inner emotion and feminine warmth within a celestial setting. Only one female pet figure is present in composition.'
     },
     { 
       name: 'Edvard Munch', 
       period: 'Expressionism',
-      malePrompt: 'Expressionist portrait in illustrated caricature style with exaggerated emotional distortion. The male figure\'s face rendered with simplified bold lines, elongated oval head shape, hands raised to sides of face in gesture of existential dread. Mouth open in silent expression of anguish, eyes wide with psychological terror. Fluid wavy brushstrokes throughout, swirling sky background of vivid crimson, burnt orange, and deep indigo streaks. Bridge or railing setting with diagonal perspective lines. Stylized almost cartoon-like simplification while maintaining raw emotional power. Bold unnatural colors, warped flowing forms, gestural visible brushwork. The composition captures primal fear and vulnerability through graphic symbolic intensity and expressive distortion. Preserve original eyewear if present, do not add or remove glasses. Maintain original facial hair style exactly as it appears, do not add or remove facial hair.',
+      malePrompt: 'Transform the subject into a ghostly, elongated, whispy creature in the style of Edvard Munch\'s The Scream, as if drawn roughly with crayons or pastels by a child. Completely replace the expression with a dramatically warped, wide-open, anguished scream, stretching the mouth downward and blending it into the surrounding face. Pose the figure with both hands holding the sides of the head, in the classic Scream posture. The figure\'s body and face are distorted, flowing, and melting into the scene, while preserving the subject\'s eyewear and clothing cues. Keep the original Munch setting fully intact: the bridge, railing, horizon, and swirling turbulent sky of crimson, orange, ochre, cobalt, and indigo, rendered in the same naive, scratchy, crayon-like style. No cartoon, no photorealism — the figure is messy, expressive, and emotionally distorted, dissolving naturally into the iconic background.',
       femalePrompt: 'Expressionist portrait in illustrated caricature style with exaggerated emotional distortion. The female figure\'s face rendered with simplified bold lines, elongated oval head shape, hands raised to sides of face in gesture of existential dread. Mouth open in silent expression of anguish, eyes wide with psychological terror. Fluid wavy brushstrokes throughout, swirling sky background of vivid crimson, burnt orange, and deep indigo streaks. Bridge or railing setting with diagonal perspective lines. Stylized almost cartoon-like simplification while maintaining raw emotional power. Bold unnatural colors, warped flowing forms, gestural visible brushwork. The composition captures primal fear and vulnerability through graphic symbolic intensity and expressive distortion. Preserve original eyewear if present, do not add or remove glasses. Maintain original hair length exactly as it appears.',
-      petPrompt: 'Expressionist portrait of a pet (dog, cat, bird, or reptile) in a dramatic, illustrated caricature style, embodying a comically exaggerated emotional distortion. The pet\'s face is rendered with simplified, bold lines, and its paws (or wings/limbs) are raised to the sides of its head in a gesture of existential dread or comical panic. Its mouth is open in a silent "scream" or exaggerated howl, eyes wide with humorous terror. The background features fluid, wavy brushstrokes depicting a swirling sky of vivid crimson, burnt orange, and deep indigo streaks, with a bridge or railing setting. The stylized, almost cartoon-like simplification amplifies the primal, yet comical, fear and vulnerability through graphic intensity and expressive distortion.'
+      malePetPrompt: 'Expressionist portrait of a pet in illustrated caricature style with highly abstract and distorted features, reminiscent of Munch\'s *The Scream*. The male pet figure\'s face rendered with minimal, raw, simplified bold lines, lacking fine definition and left to psychological interpretation. Elongated pet head shape, paws raised to sides of face in a gesture of existential dread. Mouth open in a silent expression of anguish, eyes wide with highly generalized, abstract psychological terror. Fluid wavy brushstrokes throughout, swirling sky background of vivid crimson, burnt orange, and deep indigo streaks. Stylized almost cartoon-like simplification while maintaining raw emotional power.',
+      femalePetPrompt: 'Expressionist portrait of a pet in illustrated caricature style with exaggerated emotional distortion. The female pet figure\'s face rendered with simplified bold lines, elongated pet head shape, paws raised to sides of face in a gesture of existential dread. Mouth open in a silent expression of anguish, eyes wide with psychological terror. Fluid wavy brushstrokes throughout, swirling sky background of vivid crimson, burnt orange, and deep indigo streaks. Stylized almost cartoon-like simplification while maintaining raw emotional power. The composition captures primal fear and feminine vulnerability through graphic symbolic intensity and expressive distortion.'
     },
     { 
       name: 'Pablo Picasso', 
-      period: 'Cubism',
-      malePrompt: 'Cubist portrait reimagined through overlapping geometric planes and analytical structure with vibrant abstract color palette. Masculine features are fragmented into angular facets and multiple viewpoints, revealing intellect and form simultaneously. Bold vibrant colors - electric blues, hot pinks, bright yellows, vivid oranges, deep purples, and lime greens create dynamic chromatic energy. Flattened color blocks with sharp contrasts between saturated hues, each geometric plane in distinct vibrant tone. The composition balances abstraction and identity through fragmented architecture, rhythm, and explosive color harmony, expressing modern masculine thought through geometric forms and vivid abstract expressionism. Preserve original eyewear if present, do not add or remove glasses. Maintain original facial hair style exactly as it appears, do not add or remove facial hair.',
-      femalePrompt: 'Cubist portrait reimagined through overlapping geometric planes and analytical structure with vibrant abstract color palette. Feminine features are fragmented into angular facets and multiple viewpoints, revealing grace and form simultaneously. Bold vibrant colors - electric blues, hot pinks, bright yellows, vivid oranges, deep purples, and lime greens create dynamic chromatic energy. Flattened color blocks with sharp contrasts between saturated hues, each geometric plane in distinct vibrant tone. The composition balances abstraction and identity through fragmented architecture, rhythm, and explosive color harmony, expressing modern feminine thought through geometric forms and vivid abstract expressionism. Preserve original eyewear if present, do not add or remove glasses. Maintain original hair length exactly as it appears.',
-      petPrompt: 'Cubist portrait of a pet (dog, cat, bird, or reptile) reimagined through overlapping geometric planes and analytical structure, with a vibrant abstract color palette. The pet\'s features are fragmented into angular facets and multiple viewpoints, revealing its form and character simultaneously. Bold, vibrant colors—electric blues, hot pinks, bright yellows, vivid oranges, deep purples, and lime greens—create dynamic chromatic energy. Flattened color blocks with sharp contrasts between saturated hues define the composition, balancing abstraction and the pet\'s identifiable features through fragmented shapes, rhythm, and explosive color harmony.'
+      period: 'Cubism/Surrealism',
+      malePrompt: 'Style: Cubism • Neon Vibrant • Geometric • Abstract Masculine Expressionism\nMain Instruction:\n Create a Cubist portrait of the male subject, placed within a fragmented geometric Cubist background. The subject is rendered in Cubist style while remaining the clear focal point, surrounded by angular abstract planes.\nSubject Rules:\nOne single, unified male subject only.\n\n\nDo not duplicate, split, or multiply the face.\n\n\nKeep original eyewear exactly as it appears (do not add/remove/change glasses).\n\n\nMaintain original hair length, beard, or facial hair exactly as shown in the source image.\n\n\nVisual Style – Subject:\nStrong masculine features broken into geometric facets and angular planes.\n\n\nOverlapping shapes, analytical Cubist structure, subtle multi-viewpoint hints.\n\n\nNeon palette on the subject: electric blue, hot pink, bright yellow, vivid orange, deep purple, lime green.\n\n\nFlattened, high-contrast color blocks, each plane in its own saturated neon tone.\n\n\nVisual Style – Background:\nFully abstract fragmented Cubist environment behind the subject.\n\n\nIrregular shapes, intersecting planes, neon geometric patterns.\n\n\nNo photorealism; the background should be entirely Cubist.\n\n\nBackground complements but does not overpower the subject.\n\n\nMood & Composition:\nStrong angular rhythm, geometric dynamism.\n\n\nExplosive neon color harmony with a bold masculine edge.\n\n\nWell-balanced abstraction that preserves identity.\n\n\nOutput:\n A neon Cubist portrait of a single male subject, surrounded by a fragmented Cubist background, preserving glasses (if any) and exact hair/facial hair length.\n',
+      femalePrompt: 'Style: Cubism • Neon Vibrant • Geometric • Abstract Feminine Expressionism\nMain Instruction:\n Create a Cubist portrait of the subject, placed within a fragmented, geometric Cubist background. The subject is rendered in Cubist style but remains the main focus, surrounded by angular, abstract planes in the background.\nSubject Rules:\nOne single, unified subject only.\n\n\nDo not duplicate or multiply the face.\n\n\nKeep original eyewear exactly as it appears (do not add/remove/change glasses).\n\n\nMaintain original hair length exactly.\n\n\nVisual Style – Subject:\nFeminine features fragmented into angular facets and geometric planes.\n\n\nOverlapping shapes, multiple subtle viewpoints, analytical Cubist structure.\n\n\nBright neon palette on the subject: electric blue, hot pink, bright yellow, vivid orange, deep purple, lime green.\n\n\nFlattened, high-contrast color blocks, each plane in a distinct vibrant tone.\n\n\nVisual Style – Background:\nFully abstract, fragmented geometric Cubist background.\n\n\nNo photorealism.\n\n\nDynamic planes, intersecting shapes, and neon-saturated color patterns.\n\n\nBackground complements but does not overpower the subject.\n\n\nMood & Composition:\nRhythmic geometric architecture.\n\n\nExplosive neon color harmony.\n\n\nStrong contrast between subject and background while keeping a cohesive Cubist identity.\n\n\nOutput:\n A neon Cubist portrait of a single female subject, surrounded by a fragmented Cubist background, with preserved glasses and exact hair length.',
+      malePetPrompt: 'Cubist/Surrealist portrait of a pet in the style of Picasso, **highly abstract and fragmented** with simultaneous viewpoints. The masculine pet figure is completely reimagined through a shattered arrangement of **hard-edged, geometric, intersecting planes** (like squares, triangles, and cones), showing **multiple pet facial angles at once** (e.g., a profile eye on a frontal face). The figure\'s composition should be **highly abstract, pushing away from recognizable form**. **Picasso\'s signature vibrant palette** is used: **Vibrant Reds, Bright Yellows, Turquoise, Purples, Lilacs, and Bright Greens**. The composition features **heavy, black outlines (cloisonné)** and **large, flat areas of color** with sharp, high-contrast, non-naturalistic hues. The final image must embody **analytical and synthetic cubism** through extreme geometric distortion and non-realistic, fragmented representation.',
+      femalePetPrompt: 'Cubist/Surrealist portrait of a pet in the style of Picasso, **highly abstract and fragmented** with simultaneous viewpoints. The feminine pet figure is completely reimagined through a shattered arrangement of **hard-edged, geometric, intersecting planes** (like squares, triangles, and cones), showing **multiple pet facial angles at once** (e.g., a profile eye on a frontal face). The figure\'s composition should be **highly abstract, pushing away from recognizable form**. **Picasso\'s signature vibrant palette** is used: **Vibrant Reds, Bright Yellows, Turquoise, Purples, Lilacs, and Bright Greens**. The composition features **heavy, black outlines (cloisonné)** and **large, flat areas of color** with sharp, high-contrast, non-naturalistic hues. The final image must embody **analytical and synthetic cubism** through extreme geometric distortion and non-realistic, fragmented representation.'
     },
     { 
       name: 'Salvador Dalí', 
       period: 'Surrealism',
-      malePrompt: 'Surrealist composition blending the masculine figure with iconic dreamlike symbolism. Hyperrealistic rendering with photographic precision and meticulous detail. The subject integrated into a fantastical scene featuring melting pocket watches draped over branches or edges, long-legged elephants with spindly legs walking in distant desert landscape, fried eggs, crutches as symbolic supports, distorted architectural elements with impossible perspectives. Smooth flawless glazing technique with warm golden desert light and infinite horizons. The figure maintains realistic portrayal while surrounded by symbolic impossibilities - floating objects, double images, spatial distortions. Vast barren landscape with tiny figures in distance, creating dreamlike scale and subconscious narrative. Preserve original eyewear if present, do not add or remove glasses. Maintain original facial hair style exactly as it appears, do not add or remove facial hair.',
-      femalePrompt: 'Surrealist composition blending the feminine figure with iconic dreamlike symbolism. Hyperrealistic rendering with photographic precision and meticulous detail. The subject is integrated into a fantastical scene featuring melting pocket watches draped over branches or edges, long-legged elephants with spindly legs walking across a vast desert landscape, floating orbs, crutches as symbolic supports, and distorted architectural elements with impossible perspectives. Smooth, flawless glazing technique with warm golden desert light and infinite horizons. The woman is portrayed with realistic beauty and serenity, grounded in reality yet surrounded by symbolic impossibilities — levitating objects, mirrored reflections, and spatial distortions. A vast barren landscape stretches into infinity, dotted with tiny distant figures, creating an atmosphere of subconscious mystery and ethereal allure. Preserve original eyewear if present, do not add or remove glasses. Maintain original hairstyle exactly as it appears, do not add or remove hair elements.',
-      petPrompt: 'Surrealist composition blending the pet (dog, cat, bird, or reptile) with iconic dreamlike symbolism, rendered with hyperrealistic photographic precision. The pet is integrated into a fantastical scene featuring melting pocket watches draped over branches or edges, long-legged elephants with spindly legs walking in a distant desert landscape, floating bones or toys, and distorted architectural elements with impossible perspectives. Smooth, flawless glazing technique creates warm golden desert light and infinite horizons. The pet maintains its realistic portrayal while surrounded by symbolic impossibilities—floating objects, double images, spatial distortions. A vast barren landscape with tiny figures in the distance creates a dreamlike scale and subconscious narrative, making the pet a whimsical centerpiece in a Dalí-esque dreamscape.'
+      malePrompt: 'Create a Salvador Dalí–inspired surrealist portrait of one single male subject in a vast golden desert. Preserve his face, identity, hairstyle length, facial hair, and body proportions so he remains fully human and recognizable. Do not create drawers, crutches, or any body openings.\n\nShift the style away from photorealism and toward Dalí\'s painterly oil technique: visible brush textures, softened contours, slightly exaggerated forms, warm surreal lighting, and a dreamlike golden palette. He should appear as a painted Dalí character rather than a superimposed photograph.\n\nHe is gently holding a melting pocket watch in one hand, the curved clock draping over his palm in classic Dalí style.\n\nAllow elegant surreal transitions. The entire bottom half of his body may transform into desert forms such as flowing sand, cracked earth, or root-like structures rising from the ground. This transition should remain organic, poetic, and non-monstrous. His hair may blend subtly into drifting clouds, wind, or soft painterly strokes. His clothing may partially dissolve into sand, mist, or flowing desert textures.\n\nPlace him within a Dalí desert dreamscape: barren skeletal trees with melting clocks, long thin shadows stretching across cracked desert ground, floating spheres, drifting sand particles, distant elephants walking on stilt-like legs, and a soft atmospheric haze. Maintain a clean composition emphasizing symbolism, painterly surrealism, and elegant transformation rather than realism.',
+      femalePrompt: 'Create a Salvador Dalí–inspired surrealist portrait of one single female subject in a vast golden desert. Preserve her face, identity, hairstyle length, and natural body proportions. She must remain fully human and recognizable. Do not create drawers, crutches, or any openings in the body.\n\nShift the style away from photorealism and toward Dalí\'s painterly, slightly exaggerated oil-painting aesthetic. Use visible brush textures, soft edges, warm surreal lighting, and a dreamlike golden palette. She should look like a painted surrealist character, not like a composited photograph.\n\nShe gently holds a melting pocket watch in one hand, the clock draped over her palm in classic Dalí style, with flowing curves and softened forms.\n\nAllow elegant, more pronounced surreal transitions:\n\n• The entire bottom half of her body (from waist downward) gradually transforms into a blend of sand, cracked desert earth, and organic root-like structures, as if she is growing from or merging with the ground\n• Her hair softly transitions into drifting cloud wisps, wind, or painterly strokes\n• Her clothing may partially dissolve into sand, mist, or fluid brush-texture fabrics, while still keeping its basic form recognizable\n\nSurround her with Dalí dreamscape elements:\n• Barren skeletal trees draped with melting clocks\n• Long, thin, impossible shadows stretching across cracked earth\n• Floating spheres and drifting sand motes suspended in the air\n• Distant elephants on elongated stilt-like legs\n• Soft atmospheric haze and calm dream logic throughout\n\nMaintain a clean composition emphasizing beauty, painterly character design, symbolic elements, and surreal transformation. Prioritize Dalí-style brushwork and stylization over realism, ensuring she feels like a surreal painted figure emerging from the desert, not a photo.',
+      malePetPrompt: 'Create a Salvador Dalí–inspired surrealist portrait of one single male dog standing in a vast golden desert. Preserve the dog\'s exact facial features, breed proportions, natural coloring, and any clothing he is wearing, such as a sweater. Do not add bows, accessories, or gender-altering elements. The dog must remain fully recognizable and natural, not humanized.\n\nShift the style away from photorealism and toward Dalí\'s painterly surrealism, with visible brush textures, warm dreamlike lighting, softened edges, and exaggerated oil-painting character.\n\nHave the dog gently interacting with a melting pocket watch in classic Dalí style: the soft clock may drape over a rock, his paw, or the sand near him, with subtle playful or curious interaction.\n\nInclude a surreal cloud formation in the sky that loosely resembles the silhouette of the dog\'s breed, but keep it clearly a cloud — soft, abstract, airy, with no hard outlines or photographic detail. The resemblance should be subtle and impressionistic, not literal.\n\nSurround the scene with Dalí dreamscape elements:\n\n• Barren skeletal trees with melting clocks\n• Long thin shadows across cracked desert ground\n• Floating spheres or drifting sand particles\n• Distant elephants on stilt-like legs\n• Soft atmospheric haze\n\nMaintain a calm, symbolic, painterly composition that emphasizes surrealism, desert emptiness, and a dreamlike connection between the dog, the melting clock, and the cloud resemblance.',
+      femalePetPrompt: 'Create a Salvador Dalí–inspired surrealist portrait of one single female pet standing in a vast golden desert. Preserve the pet\'s identity, facial structure, fur pattern, and any clothing she is wearing in the original photo. She must remain fully recognizable and natural, without drawers, crutches, or unnatural body openings.\n\nShift the style away from photorealism toward Dalí\'s classic painterly oil-painting look: softened edges, visible brush textures, warm surreal lighting, and a dreamlike color palette.\n\nThe pet gently interacts with a melting pocket watch draped over a rock, branch, or object near her, in the classic Dalí style of flowing, softened clocks.\n\nAdd elegant surreal elements around her:\n• A drifting cloud above her that is abstract and painterly, subtly alluding to the pet\'s general shape or breed silhouette without becoming a literal dog image. The cloud must remain unmistakably a cloud, soft, airy, and surreal rather than a cut-out figure.\n• Long thin shadows across cracked golden desert earth\n• Occasional floating spheres or drifting sand\n• Barren skeletal trees in the distance with melting clocks\n• Optional tiny elephants walking on long stilt-like legs\n• Soft atmospheric haze and calm dreamlike space\n\nMaintain a clean, balanced composition emphasizing beauty, symbolism, and painterly surreal transformation. The pet should feel like a Dalí-inspired character within an impossible dreamscape, not a photorealistic cutout.'
     },
     { 
       name: 'Andy Warhol', 
       period: 'Pop Art',
       malePrompt: 'Pop Art portrait in iconic 2x2 grid format with four color variations of the same face. High contrast silkscreen aesthetic with simplified bold features - strong jawline, defined nose, expressive eyes reduced to graphic shapes. Each quadrant features different vibrant color combination: top-left with neon pink face on yellow background, top-right with neon green face on blue background, bottom-left with neon yellow face on pink background, bottom-right with neon blue face on green background. Flat planes of solid color, heavy black outlines and shadows, mechanical screen-print texture. The repeated image in saturated artificial colors transforms identity into pop icon, mass-produced celebrity aesthetic with commercial vibrancy and graphic clarity. Preserve original eyewear if present, do not add or remove glasses. Maintain original facial hair style exactly as it appears, do not add or remove facial hair.',
       femalePrompt: 'Pop Art portrait in iconic 2x2 grid format with four color variations of the same face. High contrast silkscreen aesthetic with simplified glamorous features - defined eyes, bold lips, elegant curves reduced to graphic shapes. Each quadrant features different vibrant color combination: top-left with hot pink face on yellow background, top-right with electric blue face on orange background, bottom-left with bright yellow face on magenta background, bottom-right with lime green face on purple background. Flat planes of solid color, heavy black outlines and shadows, mechanical screen-print texture. The repeated feminine image in saturated artificial colors creates mass-produced celebrity glamour with commercial pop iconography and poster-like graphic clarity. Only one female figure present in composition. Preserve original eyewear if present, do not add or remove glasses. Maintain original hair length exactly as it appears.',
-      petPrompt: 'Pop Art portrait of a pet (dog, cat, bird, or reptile) in an iconic 2x2 grid format, featuring four color variations of the same pet\'s face. Rendered with a high-contrast silkscreen aesthetic and simplified bold features – expressive eyes, nose, and distinct outlines reduced to graphic shapes. Each quadrant showcases a different vibrant color combination: top-left with neon pink pet on a yellow background, top-right with neon green pet on a blue background, bottom-left with neon yellow pet on a pink background, bottom-right with neon blue pet on a green background. Flat planes of solid color, heavy black outlines, and mechanical screen-print texture create a mass-produced celebrity pet aesthetic with commercial vibrancy and graphic clarity.'
+      malePetPrompt: 'Pop Art portrait of a pet in iconic 2x2 grid format with four color variations of the same face. High contrast silkscreen aesthetic with simplified bold features—defined nose, expressive eyes reduced to graphic shapes. Each quadrant features a different vibrant color combination: top-left with neon pink face on yellow background, top-right with neon green face on blue background, bottom-left with neon yellow face on pink background, bottom-right with neon blue face on green background. Flat planes of solid color, heavy black outlines and shadows, mechanical screen-print texture. The repeated image in saturated artificial colors transforms the pet identity into a pop icon, mass-produced celebrity aesthetic with commercial vibrancy and graphic clarity.',
+      femalePetPrompt: 'Pop Art portrait of a pet in iconic 2x2 grid format with four color variations of the same face. High contrast silkscreen aesthetic with simplified glamorous features—defined eyes, bold lips, elegant curves reduced to graphic shapes. Each quadrant features a different vibrant color combination: top-left with hot pink face on yellow background, top-right with electric blue face on orange background, bottom-left with bright yellow face on magenta background, bottom-right with lime green face on purple background. Flat planes of solid color, heavy black outlines and shadows, mechanical screen-print texture. The repeated feminine pet image in saturated artificial colors creates mass-produced celebrity glamour with commercial pop iconography and poster-like graphic clarity.'
     },
     { 
       name: 'Grant Wood', 
       period: 'American Regionalism',
-      malePrompt: 'American Regionalist portrait in two-figure composition featuring a stern-faced man and woman standing together in front of white clapboard house with Gothic window. Transform the male subject into the farmer figure in foreground - wearing dark jacket with white collarless shirt, round wire spectacles, holding three-pronged pitchfork vertically. The man rendered with resolute stoic posture and plain dignity, balding or short hair, gazing directly forward with serious expression. Keep the woman in background as the original composition shows - modest period dress with white collar, cameo brooch at neck, standing slightly behind. Both rendered in crisp lines and smooth enamel texture with precise stylized features. Earthy browns, greens, and muted blues evoke rural Midwestern honesty. Folk art influence with clean linear forms, capturing American heartland endurance. The male subject should clearly become the pitchfork-holding farmer while woman remains faithful to original painting. Preserve original eyewear if present, do not add or remove glasses. Maintain original facial hair style exactly as it appears, do not add or remove facial hair.',
+      malePrompt: 'American Regionalist portrait in two-figure composition featuring a stern-faced man and woman standing together in front of white clapboard house with Gothic window. Transform the male subject into the farmer figure in foreground - wearing dark jacket with white collarless shirt, round wire spectacles, holding three-pronged pitchfork vertically. The man rendered with resolute stoic posture and plain dignity, balding or short hair, gazing directly forward with serious expression. Keep the woman in background as the original composition shows - modest period dress with white collar, cameo brooch at neck, hair pulled back, standing slightly behind. Both rendered in crisp lines and smooth enamel texture with precise stylized features. Earthy browns, greens, and muted blues evoke rural Midwestern honesty. Folk art influence with clean linear forms, capturing American heartland endurance. The male subject should clearly become the pitchfork-holding farmer while woman remains faithful to original painting. Preserve original eyewear if present, do not add or remove glasses. Maintain original facial hair style exactly as it appears, do not add or remove facial hair.',
       femalePrompt: 'American Regionalist portrait in two-figure composition featuring a man and woman standing together in front of white clapboard house with Gothic window. Transform the female subject into the woman figure - wearing modest period dress with white rickrack trim, white collar, cameo brooch at neck, hair pulled back in severe center part into a bun. The woman rendered with precise stylized features, strong Midwestern character with gentle restrained dignity, modest serious expression, standing slightly behind or beside. Keep the man as the original composition shows - stern farmer in dark jacket, holding three-pronged pitchfork, round spectacles, balding, gazing forward stoically. Both rendered in crisp lines and smooth enamel-like finish with precise folk art style. Warm earth tones with soft pastels, clean linear forms. The female subject should clearly become the modest woman in period dress while man remains faithful to original painting composition. Only one female figure present in composition. Preserve original eyewear if present, do not add or remove glasses. Maintain original hair length exactly as it appears.',
-      petPrompt: 'American Regionalist portrait of a pet (dog, cat, bird, or reptile) dressed as the farmer/man from Grant Wood\'s American Gothic, standing resolutely in front of a white clapboard house with a Gothic window. The pet is posed with a severe, stoic dignity, its expression serious and earnest. The pet\'s markings and features are stylized with clean, linear forms and a smooth, enamel-like finish. The background is a simple, muted landscape in earthy browns and greens, evoking rural Midwestern honesty. The composition captures the pet\'s enduring character through folk art influence and simplified, precise forms.'
+      malePetPrompt: 'American Regionalist portrait in two-figure composition featuring a stern-faced male pet and a modest human woman standing together in front of a white clapboard house with a Gothic window. Transform the male pet subject into the farmer figure in the foreground—wearing a dark structured jacket with a white collarless shirt, round wire spectacles, and holding a three-pronged pitchfork vertically in one paw. The male pet is rendered with a resolute stoic posture and plain dignity, gazing directly forward with a serious expression. A modest human woman remains in the background (wearing a period dress with a white collar), standing slightly behind. Rendered in crisp lines and smooth enamel texture with precise stylized features, conveying rural Midwestern honesty.',
+      femalePetPrompt: 'American Regionalist portrait in two-figure composition featuring a human male and a female pet standing together in front of a white clapboard house with a Gothic window. Transform the female pet subject into the woman figure—wearing a modest period dress with white rickrack trim, a white collar, and a cameo brooch at the neck. The female pet is rendered with precise stylized features, strong Midwestern character with gentle restrained dignity, a modest serious expression, standing slightly behind or beside the human male. The human male remains in the foreground (stern farmer in a dark jacket, holding a three-pronged pitchfork). Rendered in crisp lines and smooth enamel-like finish with a precise folk art style. The female pet should clearly become the modest woman pet in period dress.'
     }
   ];
+
+  // Sample images for preview mode (to be replaced with user's actual generated image for Van Gogh)
+  const sampleImages = {
+    male: {
+      0: '/samples/male/davinci.png',
+      1: '/samples/male/michelangelo.png',
+      2: '/samples/male/raphael.png',
+      3: '/samples/male/rembrandt.png',
+      4: '/samples/male/vermeer.png',
+      5: '/samples/male/monet.png',
+      6: '/samples/male/vangogh.png', // Will be replaced with real image
+      7: '/samples/male/munch.png',
+      8: '/samples/male/picasso.png',
+      9: '/samples/male/dali.png',
+      10: '/samples/male/warhol.png',
+      11: '/samples/male/wood.png'
+    },
+    female: {
+      0: '/samples/female/davinci.png',
+      1: '/samples/female/michelangelo.png',
+      2: '/samples/female/raphael.png',
+      3: '/samples/female/rembrandt.png',
+      4: '/samples/female/vermeer.png',
+      5: '/samples/female/monet.png',
+      6: '/samples/female/vangogh.png',
+      7: '/samples/female/munch.png',
+      8: '/samples/female/picasso.png',
+      9: '/samples/female/dali.png',
+      10: '/samples/female/warhol.png',
+      11: '/samples/female/wood.png'
+    },
+    pet: {
+      0: '/samples/pet/davinci.png',
+      1: '/samples/pet/michelangelo.png',
+      2: '/samples/pet/raphael.png',
+      3: '/samples/pet/rembrandt.png',
+      4: '/samples/pet/vermeer.png',
+      5: '/samples/pet/monet.png',
+      6: '/samples/pet/vangogh.png',
+      7: '/samples/pet/munch.png',
+      8: '/samples/pet/picasso.png',
+      9: '/samples/pet/dali.png',
+      10: '/samples/pet/warhol.png',
+      11: '/samples/pet/wood.png'
+    }
+  };
 
   // ============================================================================
   // HANDLER FUNCTIONS AND EFFECTS
@@ -169,11 +231,96 @@ export default function MasterpieceMe() {
         
         const sessionMatch = path.match(/\/session\/([^\/\?]+)/);
         if (sessionMatch) {
-          setSessionId(sessionMatch[1]);
-          console.log('✅ Our session ID:', sessionMatch[1]);
+          const ourSessionId = sessionMatch[1];
+          setSessionId(ourSessionId);
+          console.log('✅ Our session ID:', ourSessionId);
+          
+          // Load session data to get gender
+          const sessionResponse = await fetch(`${BACKEND_URL}/api/session/${ourSessionId}`);
+          const sessionData = await sessionResponse.json();
+          
+          if (sessionData.selected_gender && sessionData.is_preview_mode) {
+            // Payment successful - now generate remaining 11 images
+            setSelectedGender(sessionData.selected_gender);
+            setUploadedImage(sessionData.uploaded_image);
+            setCoverColor(sessionData.cover_color || 'blue');
+            setCustomerName(sessionData.customer_name || '');
+            setDedication(sessionData.dedication || '');
+            
+            setCurrentStep('generating-final');
+            setBatchGenerating(true);
+            setBatchProgress(0);
+            
+            // Start progress simulation
+            const progressInterval = setInterval(() => {
+              setBatchProgress(prev => {
+                if (prev >= 95) {
+                  clearInterval(progressInterval);
+                  return prev;
+                }
+                const increment = prev < 30 ? 3 : prev < 60 ? 2 : 1;
+                return Math.min(95, prev + increment);
+              });
+            }, 1000);
+            
+            // Generate remaining 11 images (all except Van Gogh which is #6)
+            setTimeout(async () => {
+              try {
+                const response = await fetch(`${BACKEND_URL}/api/generate-all-12`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    sessionId: ourSessionId,
+                    selectedGender: sessionData.selected_gender,
+                    image: sessionData.uploaded_image,
+                    artists: artists
+                  })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                  // Merge new images with existing Van Gogh preview
+                  const allImages = { ...generatedImages, ...data.generatedImages };
+                  
+                  // Auto-select first variation for each NEW artist (Van Gogh already selected)
+                  const autoSelected = { ...selectedVariations };
+                  Object.keys(data.generatedImages).forEach(artistIdx => {
+                    autoSelected[artistIdx] = data.generatedImages[artistIdx][0];
+                  });
+                  
+                  setGeneratedImages(allImages);
+                  setSelectedVariations(autoSelected);
+                  setIsPreviewMode(false); // No longer preview mode - all images are real!
+                  
+                  await fetch(`${BACKEND_URL}/api/sessions/${ourSessionId}/preview-mode`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ is_preview_mode: false })
+                  });
+                }
+                
+                clearInterval(progressInterval);
+                setBatchProgress(100);
+                setBatchGenerating(false);
+                
+                // Move to success page
+                setTimeout(() => {
+                  setCurrentStep('success');
+                }, 1500);
+              } catch (error) {
+                console.error('Final generation error:', error);
+                // Even if generation fails, show success page
+                setCurrentStep('success');
+              }
+            }, 500);
+          } else {
+            // No preview mode data - just show success
+            setCurrentStep('success');
+          }
+        } else {
+          setCurrentStep('success');
         }
         
-        setCurrentStep('success');
         setIsSessionLoading(false);
         return;
       }
@@ -215,11 +362,24 @@ export default function MasterpieceMe() {
             setSelectedVariations(parsedSelectedVariations);
             setUploadedImage(session.uploaded_image);
             
-            if (!session.selected_gender) {
+            // Check if contact is verified
+            const isVerified = session.verification_email || session.verification_phone;
+            
+            if (!isVerified) {
+              // Not verified yet - must verify first
+              setCurrentStep('verify-contact');
+              setContactVerified(false);
+            } else if (!session.selected_gender) {
+              // Verified but no gender selected
+              setContactVerified(true);
               setCurrentStep('gender-select');
             } else if (Object.keys(parsedSelectedVariations).length === 12) {
+              // All done - go to preview
+              setContactVerified(true);
               setCurrentStep('preview');
             } else {
+              // Gender selected but not all images generated
+              setContactVerified(true);
               setCurrentStep('personalization');
             }
           } else {
@@ -236,6 +396,15 @@ export default function MasterpieceMe() {
     
     loadSessionFromUrl();
   }, []);
+
+  // Auto-focus first code input when verification code entry appears
+  useEffect(() => {
+    if (verificationSent && codeInputRefs.current[0]) {
+      setTimeout(() => {
+        codeInputRefs.current[0]?.focus();
+      }, 100);
+    }
+  }, [verificationSent]);
 
   const saveSession = async (updates) => {
     if (!sessionId) {
@@ -373,6 +542,7 @@ export default function MasterpieceMe() {
       const data = await response.json();
 
       if (data.success) {
+        setVerificationSent(true);
         setVerificationStep('verify');
         console.log(`✅ Verification code sent`);
       } else {
@@ -386,55 +556,41 @@ export default function MasterpieceMe() {
     }
   };
 
-  const verifyCode = async () => {
-    const code = verificationCode.join('');
-    
-    if (code.length !== 6) {
-      alert('Please enter the complete 6-digit code');
-      return;
-    }
-
-    setIsVerifying(true);
-
-    try {
-      const response = await fetch(`${BACKEND_URL}/api/verify-code`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sessionId,
-          code
-        })
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        console.log('✅ Code verified');
-        setCurrentStep('gender-select');
-      } else {
-        alert(data.error || 'Invalid code');
-        setVerificationCode(['', '', '', '', '', '']);
-        if (codeInputRefs.current[0]) {
-          codeInputRefs.current[0].focus();
-        }
-      }
-    } catch (error) {
-      console.error('❌ Verification error:', error);
-      alert('Verification failed');
-    } finally {
-      setIsVerifying(false);
-    }
-  };
-
   const handleCodeInput = (index, value) => {
     if (!/^\d*$/.test(value)) return;
     
+    // Only take the last digit if user types multiple
+    const digit = value.slice(-1);
+    
     const newCode = [...verificationCode];
-    newCode[index] = value;
+    newCode[index] = digit;
     setVerificationCode(newCode);
 
-    if (value && index < 5) {
+    // Auto-advance to next box
+    if (digit && index < 5) {
       codeInputRefs.current[index + 1]?.focus();
+    }
+
+    // Auto-verify when all 6 digits are filled
+    if (digit && index === 5) {
+      const fullCode = [...newCode].join('');
+      if (fullCode.length === 6) {
+        setTimeout(() => verifyCode(fullCode), 100);
+      }
+    }
+  };
+
+  const handleCodePaste = (e) => {
+    e.preventDefault();
+    const pastedData = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+    
+    if (pastedData.length === 6) {
+      const newCode = pastedData.split('');
+      setVerificationCode(newCode);
+      codeInputRefs.current[5]?.focus();
+      
+      // Auto-verify pasted code
+      setTimeout(() => verifyCode(pastedData), 100);
     }
   };
 
@@ -444,41 +600,113 @@ export default function MasterpieceMe() {
     }
   };
 
+  const verifyCode = async (code) => {
+    const codeToVerify = code || verificationCode.join('');
+    
+    if (codeToVerify.length !== 6) {
+      setVerificationError('Please enter all 6 digits');
+      return;
+    }
+
+    setIsVerifying(true);
+    setVerificationError('');
+
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/verify-code`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId,
+          code: codeToVerify
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        console.log('✅ Code verified');
+        setContactVerified(true);
+        setCurrentStep('gender-select');
+      } else {
+        setVerificationError(data.error || 'Invalid code. Please try again.');
+        setVerificationCode(['', '', '', '', '', '']);
+        codeInputRefs.current[0]?.focus();
+      }
+    } catch (error) {
+      console.error('❌ Verification error:', error);
+      setVerificationError('Verification failed. Please try again.');
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
   const selectGenderAndStartBatchGeneration = async (gender) => {
     setSelectedGender(gender);
     await saveSession({ 
       selected_gender: gender,
       cover_color: coverColor
     });
-    setCurrentStep('batch-generating');
-    setBatchGenerating(true);
-    setBatchProgress(0);
+    setCurrentStep('generating-preview');
+    setIsGenerating(true);
     
-    // Start progress simulation
-    const progressInterval = setInterval(() => {
-      setBatchProgress(prev => {
-        if (prev >= 95) {
-          clearInterval(progressInterval);
-          return prev;
-        }
-        // Progress slows down as it gets higher (more realistic)
-        const increment = prev < 30 ? 3 : prev < 60 ? 2 : 1;
-        return Math.min(95, prev + increment);
+    // Generate ONLY Van Gogh preview
+    await generatePreviewImage(gender);
+  };
+
+  const generatePreviewImage = async (gender = selectedGender) => {
+    setIsGenerating(true);
+    console.log('🎨 Generating Van Gogh preview...');
+
+    try {
+      const vanGoghIndex = 6; // Van Gogh is artist #6
+      const artist = artists[vanGoghIndex];
+      
+      const promptKey = gender === 'Male' ? 'malePrompt' : 
+                       gender === 'Female' ? 'femalePrompt' : 
+                       gender === 'MalePet' ? 'malePetPrompt' :
+                       gender === 'FemalePet' ? 'femalePetPrompt' : 'malePrompt';
+      const artistPrompt = artist[promptKey];
+
+      const response = await fetch(`${BACKEND_URL}/api/generate-variations`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          image: uploadedImage,
+          artistName: artist.name,
+          artistPrompt: artistPrompt,
+          count: 1
+        })
       });
-    }, 1000);
-    
-    // Start batch generation
-    setTimeout(() => {
-      generateAllTwelve(gender).then(() => {
-        clearInterval(progressInterval);
-        setBatchProgress(100);
-      });
-    }, 500);
-    
-    // Move to personalization after 2 seconds so user can fill it out while generating
-    setTimeout(() => {
-      setCurrentStep('personalization');
-    }, 2000);
+
+      const data = await response.json();
+
+      if (data.success && data.variations && data.variations.length > 0) {
+        console.log('✅ Van Gogh preview generated!');
+        
+        // Store only Van Gogh image
+        const previewImages = { [vanGoghIndex]: data.variations };
+        const previewSelected = { [vanGoghIndex]: data.variations[0] };
+        
+        setGeneratedImages(previewImages);
+        setSelectedVariations(previewSelected);
+        setIsPreviewMode(true);
+
+        await saveSession({
+          generated_images: previewImages,
+          selected_variations: previewSelected,
+          is_preview_mode: true
+        });
+
+        setIsGenerating(false);
+        setCurrentStep('preview');
+      } else {
+        throw new Error('Failed to generate preview image');
+      }
+    } catch (error) {
+      console.error('❌ Preview generation error:', error);
+      setIsGenerating(false);
+      alert('Preview generation failed. Please try again.');
+    }
   };
 
   const generateAllTwelve = async (gender = selectedGender) => {
@@ -519,14 +747,23 @@ export default function MasterpieceMe() {
         });
 
         setBatchGenerating(false);
-        setCurrentStep('preview');
+        // Don't auto-advance - let user click "Continue to Preview" button
+        console.log('✅ Generation complete. Waiting for user to continue.');
       } else {
         throw new Error(data.error || 'Batch generation failed');
       }
     } catch (error) {
       console.error('❌ Batch generation error:', error);
       setBatchGenerating(false);
-      alert('Generation failed. Please try again.');
+      setBatchProgress(0);
+      
+      const retry = confirm('Image generation failed. This might be due to server load. Would you like to try again?');
+      if (retry) {
+        // Wait 2 seconds then retry
+        setTimeout(() => generateAllTwelve(gender), 2000);
+      } else {
+        alert('Generation cancelled. Please refresh the page to try again or contact support.');
+      }
     }
   };
 
@@ -545,7 +782,7 @@ export default function MasterpieceMe() {
           image: uploadedImage,
           artistName: artist.name,
           artistPrompt: artistPrompt,
-          count: 2
+          count: 1
         })
       });
 
@@ -677,7 +914,71 @@ export default function MasterpieceMe() {
 
       {/* HOME STEP */}
       {currentStep === 'home' && (
-        <section className="max-w-4xl mx-auto px-4 py-20">
+        <section className="max-w-6xl mx-auto px-4 py-20">
+          {/* SAMPLE BOOKS BROWSER */}
+          {!uploadedImage && (
+            <div className="mb-16">
+              <div className="text-center mb-12">
+                <h2 className="text-4xl md:text-5xl font-bold mb-4">Browse Sample Books First</h2>
+                <p className="text-xl text-gray-600">
+                  See what your personalized book will look like with our pre-made examples
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+                {/* MALE SAMPLE */}
+                <button
+                  onClick={() => {
+                    setCurrentSampleBook('male');
+                    setShowSampleBrowser(true);
+                  }}
+                  className="group bg-white rounded-3xl p-8 shadow-xl hover:shadow-2xl transition transform hover:scale-105">
+                  <div className="text-6xl mb-4">👨</div>
+                  <h3 className="text-2xl font-bold mb-2">Male Example</h3>
+                  <p className="text-gray-600 mb-4">Professional male portrait across 12 art styles</p>
+                  <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 px-6 rounded-full font-bold group-hover:shadow-lg transition">
+                    View Sample Book →
+                  </div>
+                </button>
+
+                {/* FEMALE SAMPLE */}
+                <button
+                  onClick={() => {
+                    setCurrentSampleBook('female');
+                    setShowSampleBrowser(true);
+                  }}
+                  className="group bg-white rounded-3xl p-8 shadow-xl hover:shadow-2xl transition transform hover:scale-105">
+                  <div className="text-6xl mb-4">👩</div>
+                  <h3 className="text-2xl font-bold mb-2">Female Example</h3>
+                  <p className="text-gray-600 mb-4">Professional female portrait across 12 art styles</p>
+                  <div className="bg-gradient-to-r from-pink-600 to-red-600 text-white py-3 px-6 rounded-full font-bold group-hover:shadow-lg transition">
+                    View Sample Book →
+                  </div>
+                </button>
+
+                {/* PET SAMPLE */}
+                <button
+                  onClick={() => {
+                    setCurrentSampleBook('pet');
+                    setShowSampleBrowser(true);
+                  }}
+                  className="group bg-white rounded-3xl p-8 shadow-xl hover:shadow-2xl transition transform hover:scale-105">
+                  <div className="text-6xl mb-4">🐕</div>
+                  <h3 className="text-2xl font-bold mb-2">Pet Example</h3>
+                  <p className="text-gray-600 mb-4">Furry friend portrait across 12 art styles</p>
+                  <div className="bg-gradient-to-r from-green-600 to-teal-600 text-white py-3 px-6 rounded-full font-bold group-hover:shadow-lg transition">
+                    View Sample Book →
+                  </div>
+                </button>
+              </div>
+
+              <div className="text-center">
+                <p className="text-2xl font-bold text-gray-700 mb-4">Ready to create your own?</p>
+                <p className="text-lg text-gray-500 mb-8">↓ Upload your photo below ↓</p>
+              </div>
+            </div>
+          )}
+
           <div className="text-center mb-12">
             <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-amber-600 to-red-600 text-transparent bg-clip-text">
               See Yourself as a Masterpiece
@@ -705,14 +1006,7 @@ export default function MasterpieceMe() {
                   alt="Uploaded"
                   className="mx-auto max-w-md rounded-2xl shadow-xl mb-6"
                 />
-                <button
-                  onClick={() => {
-                    setUploadedImage(null);
-                    setSessionId(null);
-                  }}
-                  className="px-6 py-3 bg-gray-200 text-gray-700 rounded-full hover:bg-gray-300 transition">
-                  Choose Different Photo
-                </button>
+                <p className="text-green-600 font-semibold mb-4">✓ Photo uploaded successfully!</p>
               </div>
             ) : (
               <div className="text-center">
@@ -781,52 +1075,100 @@ export default function MasterpieceMe() {
               {!verificationSent ? (
                 <div className="bg-white rounded-3xl p-8 md:p-12 shadow-xl">
                   <h2 className="text-3xl md:text-4xl font-bold text-center mb-4">
-                    Verify Your Contact
+                    Save Your Progress! 📧
                   </h2>
-                  <p className="text-gray-600 text-center mb-8">
-                    We'll send you a 6-digit code to access your masterpiece anytime
+                  <p className="text-gray-600 text-center mb-2 text-lg">
+                    We'll send you a secure link so you can access your masterpiece anytime
+                  </p>
+                  <p className="text-gray-500 text-center mb-8 text-sm">
+                    Don't worry - we'll never spam you or share your info
                   </p>
 
-                  <div className="space-y-6">
-                    <div>
-                      <label className="block text-lg font-semibold mb-2">Email Address</label>
-                      <input
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="you@example.com"
-                        className="w-full px-6 py-4 border-2 border-gray-300 rounded-xl focus:border-amber-600 focus:outline-none text-lg"
-                      />
-                    </div>
-
-                    <div className="text-center text-gray-500 font-semibold">OR</div>
-
-                    <div>
-                      <label className="block text-lg font-semibold mb-2">Phone Number (SMS)</label>
-                      <input
-                        type="tel"
-                        value={sms}
-                        onChange={(e) => setSms(e.target.value)}
-                        placeholder="(555) 123-4567"
-                        className="w-full px-6 py-4 border-2 border-gray-300 rounded-xl focus:border-amber-600 focus:outline-none text-lg"
-                      />
-                    </div>
-
+                  {/* Tab Selector */}
+                  <div className="flex gap-2 mb-6 bg-gray-100 p-1 rounded-xl">
                     <button
-                      onClick={requestVerification}
-                      disabled={isVerifying || (!email && !sms)}
-                      className="w-full py-4 bg-gradient-to-r from-amber-600 to-red-600 text-white rounded-full font-bold text-lg hover:shadow-xl transition disabled:opacity-50 disabled:cursor-not-allowed">
-                      {isVerifying ? 'Sending...' : 'Send Verification Code'}
+                      onClick={() => setContactMethod('email')}
+                      className={`flex-1 py-3 rounded-lg font-semibold transition-all ${
+                        contactMethod === 'email'
+                          ? 'bg-white text-amber-600 shadow-md'
+                          : 'text-gray-600 hover:text-gray-900'
+                      }`}>
+                      <Mail className="w-4 h-4 inline mr-2" />
+                      Email
+                    </button>
+                    <button
+                      onClick={() => setContactMethod('sms')}
+                      className={`flex-1 py-3 rounded-lg font-semibold transition-all ${
+                        contactMethod === 'sms'
+                          ? 'bg-white text-amber-600 shadow-md'
+                          : 'text-gray-600 hover:text-gray-900'
+                      }`}>
+                      <Phone className="w-4 h-4 inline mr-2" />
+                      Text Message
                     </button>
                   </div>
+
+                  {/* Single Input Field */}
+                  <div className="mb-6">
+                    {contactMethod === 'email' ? (
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                          Your Email Address
+                        </label>
+                        <input
+                          type="email"
+                          value={contactValue}
+                          onChange={(e) => setContactValue(e.target.value)}
+                          placeholder="you@example.com"
+                          className="w-full px-6 py-4 border-2 border-gray-300 rounded-xl focus:border-amber-600 focus:outline-none text-lg transition"
+                          autoFocus
+                        />
+                      </div>
+                    ) : (
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                          Your Phone Number
+                        </label>
+                        <input
+                          type="tel"
+                          value={contactValue}
+                          onChange={(e) => setContactValue(e.target.value)}
+                          placeholder="(555) 123-4567"
+                          className="w-full px-6 py-4 border-2 border-gray-300 rounded-xl focus:border-amber-600 focus:outline-none text-lg transition"
+                          autoFocus
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  <button
+                    onClick={requestVerification}
+                    disabled={isVerifying || !contactValue.trim()}
+                    className="w-full py-4 bg-gradient-to-r from-amber-600 to-red-600 text-white rounded-full font-bold text-lg hover:shadow-xl transition disabled:opacity-50 disabled:cursor-not-allowed">
+                    {isVerifying ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <Loader className="w-5 h-5 animate-spin" />
+                        Sending...
+                      </span>
+                    ) : (
+                      'Send Me the Code →'
+                    )}
+                  </button>
+                  
+                  <p className="text-xs text-gray-400 text-center mt-4">
+                    🔒 Secure verification • Your info is safe with us
+                  </p>
                 </div>
               ) : (
                 <div className="bg-white rounded-3xl p-8 md:p-12 shadow-xl">
                   <h2 className="text-3xl md:text-4xl font-bold text-center mb-4">
-                    Enter Your Code
+                    Check Your {contactMethod === 'email' ? 'Email' : 'Phone'} 📬
                   </h2>
-                  <p className="text-gray-600 text-center mb-8">
-                    We sent a 6-digit code to {email || sms}
+                  <p className="text-gray-600 text-center mb-2 text-lg">
+                    We sent a 6-digit code to:
+                  </p>
+                  <p className="text-amber-600 font-bold text-center mb-8 text-xl">
+                    {contactValue}
                   </p>
 
                   <div className="flex justify-center gap-2 mb-8">
@@ -835,33 +1177,40 @@ export default function MasterpieceMe() {
                         key={index}
                         ref={(el) => (codeInputsRef.current[index] = el)}
                         type="text"
+                        inputMode="numeric"
                         maxLength={1}
                         value={verificationCode[index] || ''}
                         onChange={(e) => handleCodeInput(index, e.target.value)}
+                        onPaste={index === 0 ? handleCodePaste : undefined}
                         onKeyDown={(e) => {
                           if (e.key === 'Backspace' && !verificationCode[index] && index > 0) {
                             codeInputsRef.current[index - 1]?.focus();
                           }
                         }}
-                        className="w-12 h-14 md:w-16 md:h-20 text-center text-2xl md:text-3xl font-bold border-2 border-gray-300 rounded-xl focus:border-amber-600 focus:outline-none"
+                        className="w-12 h-14 md:w-16 md:h-20 text-center text-2xl md:text-3xl font-bold border-2 border-gray-300 rounded-xl focus:border-amber-600 focus:outline-none transition"
                       />
                     ))}
                   </div>
 
                   {verificationError && (
-                    <p className="text-red-600 text-center mb-4">{verificationError}</p>
+                    <div className="bg-red-50 border-2 border-red-200 rounded-xl p-4 mb-4">
+                      <p className="text-red-600 text-center font-semibold">{verificationError}</p>
+                    </div>
                   )}
 
                   <div className="text-center text-sm text-gray-600">
-                    Didn't receive it?
-                    <span className="text-gray-400 mx-2">|</span>
+                    Didn't receive it?{' '}
                     <button
                       onClick={requestVerification}
                       disabled={isVerifying}
-                      className="text-amber-600 hover:text-amber-700 font-semibold disabled:opacity-50">
+                      className="text-amber-600 hover:text-amber-700 font-semibold underline disabled:opacity-50">
                       Resend code
                     </button>
                   </div>
+                  
+                  <p className="text-xs text-gray-400 text-center mt-6">
+                    💡 Check your spam folder if you don't see it
+                  </p>
                 </div>
               )}
             </div>
@@ -871,7 +1220,7 @@ export default function MasterpieceMe() {
 
       {/* GENDER SELECT STEP - NOW FIRST */}
       {currentStep === 'gender-select' && (
-        <section className="max-w-5xl mx-auto px-4 py-20">
+        <section className="max-w-6xl mx-auto px-4 py-20">
           <div className="text-center mb-12">
             <h2 className="text-4xl md:text-5xl font-bold mb-4">Choose Your Style</h2>
             <p className="text-lg md:text-xl text-gray-600">
@@ -879,14 +1228,14 @@ export default function MasterpieceMe() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-5xl mx-auto">
             <button
               onClick={() => selectGenderAndStartBatchGeneration('Male')}
               className="group relative bg-gradient-to-br from-blue-500 to-blue-700 rounded-3xl p-8 hover:shadow-2xl transition transform hover:scale-105">
               <div className="text-center">
                 <div className="text-6xl mb-4">👨</div>
-                <h3 className="text-3xl font-bold text-white mb-2">Male</h3>
-                <p className="text-blue-100">Portrayed as David, Self-Portraits, and more</p>
+                <h3 className="text-2xl font-bold text-white mb-2">Male</h3>
+                <p className="text-blue-100 text-sm">Human portraits</p>
               </div>
             </button>
 
@@ -895,20 +1244,50 @@ export default function MasterpieceMe() {
               className="group relative bg-gradient-to-br from-pink-500 to-red-600 rounded-3xl p-8 hover:shadow-2xl transition transform hover:scale-105">
               <div className="text-center">
                 <div className="text-6xl mb-4">👩</div>
-                <h3 className="text-3xl font-bold text-white mb-2">Female</h3>
-                <p className="text-pink-100">Portrayed as Mona Lisa, Girl with Pearl Earring, and more</p>
+                <h3 className="text-2xl font-bold text-white mb-2">Female</h3>
+                <p className="text-pink-100 text-sm">Human portraits</p>
               </div>
             </button>
 
             <button
-              onClick={() => selectGenderAndStartBatchGeneration('Pet')}
+              onClick={() => selectGenderAndStartBatchGeneration('MalePet')}
               className="group relative bg-gradient-to-br from-green-500 to-teal-600 rounded-3xl p-8 hover:shadow-2xl transition transform hover:scale-105">
               <div className="text-center">
-                <div className="text-6xl mb-4">🐾</div>
-                <h3 className="text-3xl font-bold text-white mb-2">Pet</h3>
-                <p className="text-green-100">Your furry friend in legendary art styles</p>
+                <div className="text-6xl mb-4">🐕</div>
+                <h3 className="text-2xl font-bold text-white mb-2">Male Pet</h3>
+                <p className="text-green-100 text-sm">Masculine pet styles</p>
               </div>
             </button>
+
+            <button
+              onClick={() => selectGenderAndStartBatchGeneration('FemalePet')}
+              className="group relative bg-gradient-to-br from-purple-500 to-indigo-600 rounded-3xl p-8 hover:shadow-2xl transition transform hover:scale-105">
+              <div className="text-center">
+                <div className="text-6xl mb-4">🐈</div>
+                <h3 className="text-2xl font-bold text-white mb-2">Female Pet</h3>
+                <p className="text-purple-100 text-sm">Feminine pet styles</p>
+              </div>
+            </button>
+          </div>
+        </section>
+      )}
+
+      {/* GENERATING PREVIEW (VAN GOGH ONLY) */}
+      {currentStep === 'generating-preview' && (
+        <section className="max-w-3xl mx-auto px-4 py-20">
+          <div className="bg-white rounded-3xl p-12 shadow-xl text-center">
+            <div className="w-24 h-24 mx-auto mb-8">
+              <Loader className="w-full h-full text-amber-600 animate-spin" />
+            </div>
+
+            <h2 className="text-4xl font-bold mb-4">Creating Your Preview...</h2>
+            <p className="text-xl text-gray-600 mb-8">
+              Generating your portrait in Van Gogh's style
+            </p>
+
+            <div className="mt-8 text-sm text-gray-400">
+              <p>🎨 This will only take a few seconds</p>
+            </div>
           </div>
         </section>
       )}
@@ -973,7 +1352,11 @@ export default function MasterpieceMe() {
           <div className="text-center mb-12">
             <h2 className="text-4xl font-bold mb-4">Personalize Your Masterpiece</h2>
             <p className="text-gray-600">Add your name, dedication, and choose your cover color</p>
-            <p className="text-sm text-amber-600 mt-2">⏳ Your 12 portraits are generating in the background...</p>
+            {batchGenerating ? (
+              <p className="text-sm text-amber-600 mt-2">⏳ Your 12 portraits are generating in the background...</p>
+            ) : Object.keys(selectedVariations).length === 12 ? (
+              <p className="text-sm text-green-600 mt-2">✅ All 12 portraits are ready! Continue when you're done personalizing.</p>
+            ) : null}
           </div>
 
           <div className="max-w-2xl mx-auto bg-white rounded-3xl p-8 shadow-xl">
@@ -1024,6 +1407,31 @@ export default function MasterpieceMe() {
                   </button>
                 ))}
               </div>
+              
+              {/* Color Preview Box */}
+              <div className="mt-6 p-6 bg-gray-50 rounded-xl border-2 border-gray-200">
+                <p className="text-sm text-gray-600 mb-3 text-center font-semibold">Preview Your Cover:</p>
+                <div className="flex items-center justify-center">
+                  <div 
+                    className={`relative w-64 h-40 rounded-lg shadow-xl flex items-center justify-center ${
+                      coverColor === 'blue' ? 'bg-blue-500' :
+                      coverColor === 'dark-green' ? 'bg-emerald-800' :
+                      coverColor === 'green' ? 'bg-green-500' :
+                      coverColor === 'orange' ? 'bg-orange-500' :
+                      coverColor === 'purple' ? 'bg-purple-500' : 'bg-blue-500'
+                    }`}>
+                    <p className="text-white font-bold text-3xl text-center" style={{
+                      textShadow: '2px 2px 4px rgba(0,0,0,0.4)',
+                      fontFamily: 'serif'
+                    }}>
+                      {customerName || 'Your Name'}
+                    </p>
+                  </div>
+                </div>
+                <p className="text-sm text-gray-500 text-center mt-3">
+                  {colorOptions.find(c => c.name === coverColor)?.label || 'Blue'} Cover
+                </p>
+              </div>
             </div>
 
             <div className="flex justify-center">
@@ -1054,32 +1462,87 @@ export default function MasterpieceMe() {
       {currentStep === 'preview' && (
         <section className="max-w-7xl mx-auto px-4 py-12">
           <div className="text-center mb-8">
-            <h2 className="text-4xl md:text-5xl font-bold mb-4">🎨 Your 12 Masterpieces</h2>
+            <h2 className="text-4xl md:text-5xl font-bold mb-4">🎨 Your {isPreviewMode ? 'Preview' : '12 Masterpieces'}</h2>
             <p className="text-lg md:text-xl text-gray-600">
-              All 12 artists complete! Review your collection below
+              {isPreviewMode ? 'See yourself as Van Gogh + sample images from other artists' : 'All 12 artists complete! Review your collection below'}
             </p>
           </div>
+
+          {/* PREVIEW MODE BANNER */}
+          {isPreviewMode && (
+            <div className="max-w-4xl mx-auto mb-12 bg-gradient-to-r from-yellow-50 to-amber-50 border-4 border-amber-400 rounded-2xl p-8 shadow-xl">
+              <div className="text-center">
+                <h3 className="text-3xl font-bold text-amber-900 mb-4">
+                  ✨ Preview Mode
+                </h3>
+                <p className="text-xl text-amber-800 mb-6">
+                  You're viewing <span className="font-bold">YOUR Van Gogh portrait</span> mixed with sample images from the other 11 artists.
+                </p>
+                <div className="bg-white rounded-xl p-6 mb-6">
+                  <p className="text-lg text-gray-700 mb-4">
+                    Love what you see? Complete your masterpiece:
+                  </p>
+                  <div className="flex items-center justify-center gap-3 text-lg">
+                    <Check className="w-6 h-6 text-green-600" />
+                    <span>Generate YOUR photo in all 12 legendary art styles</span>
+                  </div>
+                  <div className="flex items-center justify-center gap-3 text-lg mt-2">
+                    <Check className="w-6 h-6 text-green-600" />
+                    <span>Professionally printed & bound book</span>
+                  </div>
+                  <div className="flex items-center justify-center gap-3 text-lg mt-2">
+                    <Check className="w-6 h-6 text-green-600" />
+                    <span>Shipped directly to your door</span>
+                  </div>
+                </div>
+                <p className="text-sm text-amber-700">
+                  Scroll down to personalize and checkout
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* 12 AI-GENERATED IMAGES GRID */}
           <div className="mb-16">
             <h3 className="text-2xl font-bold text-center mb-6">Your Portrait Gallery</h3>
             <div className="grid grid-cols-3 md:grid-cols-4 gap-6">
-              {Object.entries(selectedVariations).map(([artistIdx, variation]) => {
-                const artist = artists[parseInt(artistIdx)];
+              {artists.map((artist, idx) => {
+                // In preview mode, show real image for Van Gogh (#6), samples for others
+                const isRealImage = isPreviewMode ? idx === 6 : true;
+                const imageData = isRealImage && selectedVariations[idx] 
+                  ? selectedVariations[idx]
+                  : { url: sampleImages[selectedGender?.toLowerCase() || 'male'][idx] };
+                
                 return (
                   <button
-                    key={artistIdx}
+                    key={idx}
                     onClick={() => {
-                      setSelectedModalImage({ ...variation, artist, artistIdx: parseInt(artistIdx) });
-                      setShowImageModal(true);
+                      if (isRealImage && selectedVariations[idx]) {
+                        setSelectedModalImage({ ...imageData, artist, artistIdx: idx });
+                        setShowImageModal(true);
+                      }
                     }}
                     className="group relative">
-                    <div className="overflow-hidden rounded-xl shadow-lg hover:shadow-2xl transition aspect-square">
+                    <div className="overflow-hidden rounded-xl shadow-lg hover:shadow-2xl transition aspect-square bg-gray-100">
                       <img
-                        src={variation.url}
+                        src={imageData.url}
                         alt={artist.name}
-                        className="w-full h-full object-contain group-hover:scale-110 transition duration-300"
+                        className="w-full h-full object-contain group-hover:scale-105 transition duration-300"
+                        onError={(e) => {
+                          // Fallback to a placeholder if sample image doesn't exist yet
+                          e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="400"%3E%3Crect fill="%23f3f4f6" width="400" height="400"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" font-family="Arial" font-size="24" fill="%239ca3af"%3ESample%3C/text%3E%3C/svg%3E';
+                        }}
                       />
+                      {isPreviewMode && idx === 6 && (
+                        <div className="absolute top-2 right-2 bg-green-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg">
+                          YOUR IMAGE
+                        </div>
+                      )}
+                      {isPreviewMode && idx !== 6 && (
+                        <div className="absolute top-2 right-2 bg-gray-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg">
+                          SAMPLE
+                        </div>
+                      )}
                       <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
                         <div className="bg-white rounded-full p-4">
                           <Check className="w-8 h-8 text-amber-600" />
@@ -1107,9 +1570,10 @@ export default function MasterpieceMe() {
                 <div className="w-full h-full bg-gray-100 flex items-center justify-center p-4 relative">
                   <div className="relative w-full h-full max-w-full" style={{ aspectRatio: '19/10.25' }}>
                     <img 
-                      src="/book-pages/cover-full.png" 
+                      src={`/book-pages/${coverColor}-cover.png`}
                       alt="Full Book Cover"
                       className="w-full h-full object-contain"
+                      key={coverColor}
                     />
                     <div 
                       className="absolute text-white font-bold text-right"
@@ -1338,9 +1802,10 @@ export default function MasterpieceMe() {
                 <div className="w-full h-full bg-gray-100 flex items-center justify-center p-4 relative">
                   <div className="relative w-full h-full max-w-full" style={{ aspectRatio: '19/10.25' }}>
                     <img 
-                      src="/book-pages/cover-full.png" 
+                      src={`/book-pages/${coverColor}-cover.png`}
                       alt="Full Book Cover (Back)"
                       className="w-full h-full object-contain"
+                      key={`back-${coverColor}`}
                     />
                     <div 
                       className="absolute text-white font-bold text-right"
@@ -1414,9 +1879,12 @@ export default function MasterpieceMe() {
 
                   {/* COLOR SELECTOR IN PREVIEW */}
                   <div className="max-w-md mx-auto mb-8 bg-white rounded-2xl p-6 shadow-lg">
-                    <label className="block text-lg font-semibold text-gray-700 mb-3 text-center">
-                      Cover Color Preview
+                    <label className="block text-lg font-semibold text-gray-700 mb-2 text-center">
+                      Choose Your Cover Color
                     </label>
+                    <p className="text-xs text-gray-500 text-center mb-3">
+                      ✨ Watch the cover change in real-time!
+                    </p>
                     <div className="grid grid-cols-4 gap-3">
                       {colorOptions.map((color) => (
                         <button
@@ -1426,7 +1894,7 @@ export default function MasterpieceMe() {
                             await saveSession({ cover_color: color.name });
                           }}
                           className={`p-3 rounded-xl border-4 transition ${
-                            coverColor === color.name ? 'border-amber-600 scale-105' : 'border-gray-200'
+                            coverColor === color.name ? 'border-amber-600 scale-105 shadow-lg' : 'border-gray-200'
                           }`}>
                           <div className={`w-full h-12 rounded-lg ${color.bg} mb-1`}></div>
                           <p className="text-xs font-semibold">{color.label}</p>
@@ -1598,21 +2066,20 @@ export default function MasterpieceMe() {
                       {isGenerating ? (
                         <div className="text-center py-12">
                           <Loader className="w-16 h-16 text-amber-600 animate-spin mx-auto mb-4" />
-                          <p className="text-xl font-bold">Generating new variations...</p>
+                          <p className="text-xl font-bold">Generating new image...</p>
                         </div>
                       ) : (
                         <>
-                          <div className="grid grid-cols-2 gap-6 mb-6">
-                            {generatedImages[selectedArtistForChange]?.map((img, idx) => (
+                          <div className="mb-6">
+                            {generatedImages[selectedArtistForChange]?.[0] && (
                               <button
-                                key={idx}
-                                onClick={() => selectNewVariation(selectedArtistForChange, img)}
-                                className="relative group">
+                                onClick={() => selectNewVariation(selectedArtistForChange, generatedImages[selectedArtistForChange][0])}
+                                className="relative group w-full">
                                 <div className="overflow-hidden rounded-xl shadow-lg hover:shadow-2xl transition">
                                   <img
-                                    src={img.url}
-                                    alt={`Variation ${idx + 1}`}
-                                    className="w-full h-64 object-cover group-hover:scale-110 transition duration-300"
+                                    src={generatedImages[selectedArtistForChange][0].url}
+                                    alt="New variation"
+                                    className="w-full h-auto object-contain group-hover:scale-105 transition duration-300"
                                   />
                                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
                                     <div className="bg-white rounded-full p-4">
@@ -1620,15 +2087,15 @@ export default function MasterpieceMe() {
                                     </div>
                                   </div>
                                 </div>
-                                <p className="text-center mt-2 font-semibold">Click to Select</p>
+                                <p className="text-center mt-4 font-bold text-lg">Click to Use This Image</p>
                               </button>
-                            ))}
+                            )}
                           </div>
 
                           <button
                             onClick={() => regenerateArtist(selectedArtistForChange)}
                             className="w-full bg-purple-600 hover:bg-purple-700 text-white py-4 rounded-full font-bold text-lg transition">
-                            🔄 Generate 2 New Variations
+                            🔄 Generate New Image
                           </button>
                         </>
                       )}
@@ -1706,12 +2173,56 @@ export default function MasterpieceMe() {
                   <button
                     onClick={handleCheckout}
                     className="w-full bg-gradient-to-r from-amber-600 to-red-600 text-white py-4 rounded-full font-bold hover:shadow-xl transition">
-                    Proceed to Secure Checkout →
+                    {isPreviewMode ? 'Complete Your Masterpiece →' : 'Proceed to Secure Checkout →'}
                   </button>
+                  {isPreviewMode && (
+                    <p className="text-xs text-gray-500 text-center mt-3">
+                      After payment, we'll generate YOUR photo in all 12 artist styles
+                    </p>
+                  )}
                 </div>
               </>
             );
           })()}
+        </section>
+      )}
+
+      {/* GENERATING FINAL 11 IMAGES AFTER PAYMENT */}
+      {currentStep === 'generating-final' && (
+        <section className="max-w-3xl mx-auto px-4 py-20">
+          <div className="bg-white rounded-3xl p-12 shadow-xl text-center">
+            <div className="w-24 h-24 mx-auto mb-8">
+              <Loader className="w-full h-full text-amber-600 animate-spin" />
+            </div>
+
+            <h2 className="text-4xl font-bold mb-4">🎨 Creating Your Masterpiece!</h2>
+            <p className="text-xl text-gray-600 mb-8">
+              Payment confirmed! Now generating YOUR portraits in all 12 legendary art styles...
+            </p>
+
+            {/* REAL PROGRESS BAR */}
+            <div className="mb-6">
+              <div className="bg-gray-200 rounded-full h-6 overflow-hidden">
+                <div
+                  className="bg-gradient-to-r from-amber-500 to-red-500 h-full transition-all duration-500 flex items-center justify-center text-white text-sm font-bold"
+                  style={{ width: `${batchProgress}%` }}>
+                  {batchProgress > 10 && `${Math.round(batchProgress)}%`}
+                </div>
+              </div>
+            </div>
+
+            {/* TIMER COUNTDOWN */}
+            <p className="text-lg text-gray-500">
+              Estimated time remaining: <span className="font-bold text-amber-600">
+                {Math.max(0, Math.ceil((90 - (batchProgress / 100) * 90)))}s
+              </span>
+            </p>
+
+            <div className="mt-8 text-sm text-gray-400">
+              <p>💡 Generating remaining 11 portraits in parallel</p>
+              <p className="mt-2">This typically takes 60-90 seconds</p>
+            </div>
+          </div>
         </section>
       )}
 
@@ -1785,6 +2296,73 @@ export default function MasterpieceMe() {
             </button>
           </div>
         </section>
+      )}
+
+      {/* SAMPLE BOOK BROWSER MODAL */}
+      {showSampleBrowser && (
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl p-8 max-w-6xl w-full max-h-[95vh] overflow-y-auto my-8">
+            <div className="flex justify-between items-center mb-8">
+              <div>
+                <h2 className="text-4xl font-bold mb-2">
+                  {currentSampleBook === 'male' ? '👨 Male' : currentSampleBook === 'female' ? '👩 Female' : '🐕 Pet'} Sample Book
+                </h2>
+                <p className="text-gray-600">See what your personalized book will look like</p>
+              </div>
+              <button
+                onClick={() => setShowSampleBrowser(false)}
+                className="p-3 hover:bg-gray-100 rounded-full transition">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-3 md:grid-cols-4 gap-6 mb-8">
+              {artists.map((artist, idx) => (
+                <div key={idx} className="text-center">
+                  <div className="overflow-hidden rounded-xl shadow-lg mb-2 aspect-square bg-gray-100">
+                    <img
+                      src={`/samples/${currentSampleBook}/${artist.name.toLowerCase().replace(/ /g, '')}.png`}
+                      alt={artist.name}
+                      className="w-full h-full object-contain"
+                      onError={(e) => {
+                        // Fallback if image doesn't exist yet
+                        e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="400"%3E%3Crect fill="%23f3f4f6" width="400" height="400"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" font-family="Arial" font-size="18" fill="%239ca3af"%3ESample%3C/text%3E%3C/svg%3E';
+                      }}
+                    />
+                  </div>
+                  <p className="font-semibold text-sm">{artist.name}</p>
+                  <p className="text-xs text-gray-500">{artist.period}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="bg-gradient-to-r from-yellow-50 to-amber-50 border-4 border-amber-400 rounded-2xl p-6 mb-6">
+              <p className="text-center text-lg font-bold text-amber-900 mb-3">
+                Love what you see?
+              </p>
+              <p className="text-center text-amber-800 mb-4">
+                Create your own personalized book with YOUR photo for just $39.99 - $49.99
+              </p>
+              <button
+                onClick={() => {
+                  setShowSampleBrowser(false);
+                  // Scroll to upload section
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                className="w-full bg-gradient-to-r from-amber-600 to-red-600 text-white py-4 px-8 rounded-full font-bold text-lg hover:shadow-xl transition">
+                Create Your Own Book →
+              </button>
+            </div>
+
+            <div className="text-center">
+              <button
+                onClick={() => setShowSampleBrowser(false)}
+                className="text-gray-500 hover:text-gray-700 underline">
+                Close Sample Book
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       <footer className="bg-gray-900 text-white py-12 mt-20">
