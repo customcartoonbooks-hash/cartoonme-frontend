@@ -7,7 +7,7 @@ const BACKEND_URL = 'https://cartoonme-backend.onrender.com';
 const CLOUDFLARE_SITE_KEY = '0x4AAAAAAB6No5gcHaleduBl';
 const TURNSTILE_SITE_KEY = CLOUDFLARE_SITE_KEY;
 
-export default function MasterpieceMe() {
+export default function BuildaBook() {
   const [currentStep, setCurrentStep] = useState('home');
   const [uploadedImage, setUploadedImage] = useState(null);
   const [coverType, setCoverType] = useState('hardcover');
@@ -57,6 +57,11 @@ export default function MasterpieceMe() {
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   const [showSampleBrowser, setShowSampleBrowser] = useState(false);
   const [currentSampleBook, setCurrentSampleBook] = useState('male');
+  // State for image history and navigation
+  const [imageHistory, setImageHistory] = useState({}); // Store history per artist: { 0: [img1, img2], 1: [...] }
+  const [currentHistoryIndex, setCurrentHistoryIndex] = useState({}); // Current index: { 0: 1, 1: 0 }
+  const [paymentStatus, setPaymentStatus] = useState(null); // Track if user has paid
+  const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
   
   const fileInputRef = useRef(null);
   const codeInputsRef = useRef([]);
@@ -227,7 +232,6 @@ export default function MasterpieceMe() {
       const stripeSessionId = urlParams.get('session_id');
       if (stripeSessionId) {
         console.log('✅ Stripe redirect detected! Session ID:', stripeSessionId);
-        setOrderNumber('MM' + Date.now().toString().slice(-8));
         
         const sessionMatch = path.match(/\/session\/([^\/\?]+)/);
         if (sessionMatch) {
@@ -235,89 +239,112 @@ export default function MasterpieceMe() {
           setSessionId(ourSessionId);
           console.log('✅ Our session ID:', ourSessionId);
           
-          // Load session data to get gender
+          // Load session data
           const sessionResponse = await fetch(`${BACKEND_URL}/api/session/${ourSessionId}`);
           const sessionData = await sessionResponse.json();
           
-          if (sessionData.selected_gender && sessionData.is_preview_mode) {
-            // Payment successful - now generate remaining 11 images
-            setSelectedGender(sessionData.selected_gender);
-            setUploadedImage(sessionData.uploaded_image);
-            setCoverColor(sessionData.cover_color || 'blue');
-            setCustomerName(sessionData.customer_name || '');
-            setDedication(sessionData.dedication || '');
+          // Set all session data
+          setSelectedGender(sessionData.selected_gender);
+          setUploadedImage(sessionData.uploaded_image);
+          setCoverColor(sessionData.cover_color || 'blue');
+          setCustomerName(sessionData.customer_name || '');
+          setDedication(sessionData.dedication || '');
+          setPaymentStatus(sessionData.payment_status); // 'paid'
+          
+          // Check if images are ready (webhook should have generated them)
+          // OR if we're coming back from old batch generation endpoint
+          console.log('🔍 Session data:', {
+            fulfillment_status: sessionData.fulfillment_status,
+            has_generated_images: !!sessionData.generated_images,
+            generated_images_type: typeof sessionData.generated_images,
+            is_preview_mode: sessionData.is_preview_mode
+          });
+          
+          const hasImages = sessionData.generated_images && 
+                           (typeof sessionData.generated_images === 'string' 
+                             ? JSON.parse(sessionData.generated_images)
+                             : sessionData.generated_images);
+          const imageCount = hasImages ? Object.keys(hasImages).length : 0;
+          
+          console.log('🔍 Parsed images:', {
+            imageCount,
+            imageKeys: hasImages ? Object.keys(hasImages) : []
+          });
+          
+          // Load images if we have at least 11 (all except Van Gogh) OR if not in preview mode anymore
+          if ((imageCount >= 11 || !sessionData.is_preview_mode) && hasImages && imageCount > 0) {
+            console.log(`✅ ${imageCount} images ready! Loading post-payment preview...`);
             
-            setCurrentStep('generating-final');
-            setBatchGenerating(true);
-            setBatchProgress(0);
+            // Safe parse - might already be object
+            const allImages = typeof sessionData.generated_images === 'string'
+              ? JSON.parse(sessionData.generated_images)
+              : sessionData.generated_images || {};
+            const allSelected = typeof sessionData.selected_images === 'string'
+              ? JSON.parse(sessionData.selected_images)
+              : sessionData.selected_images || {};
             
-            // Start progress simulation
-            const progressInterval = setInterval(() => {
-              setBatchProgress(prev => {
-                if (prev >= 95) {
-                  clearInterval(progressInterval);
-                  return prev;
-                }
-                const increment = prev < 30 ? 3 : prev < 60 ? 2 : 1;
-                return Math.min(95, prev + increment);
+            console.log('🎨 All images:', Object.keys(allImages));
+            console.log('🎨 All selected:', Object.keys(allSelected));
+            
+            // If selected_images is empty, auto-select first of each
+            if (Object.keys(allSelected).length === 0) {
+              Object.keys(allImages).forEach(idx => {
+                // allImages[idx] is an array of images, select the first one
+                allSelected[idx] = Array.isArray(allImages[idx]) 
+                  ? allImages[idx][0] 
+                  : allImages[idx];
               });
-            }, 1000);
+            }
             
-            // Generate remaining 11 images (all except Van Gogh which is #6)
-            setTimeout(async () => {
-              try {
-                const response = await fetch(`${BACKEND_URL}/api/generate-all-12`, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    sessionId: ourSessionId,
-                    selectedGender: sessionData.selected_gender,
-                    image: sessionData.uploaded_image,
-                    artists: artists
-                  })
-                });
+            setGeneratedImages(allImages);
+            setSelectedVariations(allSelected);
+            setIsPreviewMode(false); // All real images now!
+            console.log('🎨 Set isPreviewMode to FALSE - showing all real images');
+            setCurrentStep('preview');
+          } else {
+            // Images still generating via webhook - show loading
+            setCurrentStep('generating-final');
+            
+            // Poll for completion
+            const checkInterval = setInterval(async () => {
+              const checkResponse = await fetch(`${BACKEND_URL}/api/session/${ourSessionId}`);
+              const checkData = await checkResponse.json();
+              
+              if (checkData.fulfillment_status === 'images_ready') {
+                clearInterval(checkInterval);
                 
-                const data = await response.json();
-                if (data.success) {
-                  // Merge new images with existing Van Gogh preview
-                  const allImages = { ...generatedImages, ...data.generatedImages };
-                  
-                  // Auto-select first variation for each NEW artist (Van Gogh already selected)
-                  const autoSelected = { ...selectedVariations };
-                  Object.keys(data.generatedImages).forEach(artistIdx => {
-                    autoSelected[artistIdx] = data.generatedImages[artistIdx][0];
-                  });
-                  
-                  setGeneratedImages(allImages);
-                  setSelectedVariations(autoSelected);
-                  setIsPreviewMode(false); // No longer preview mode - all images are real!
-                  
-                  await fetch(`${BACKEND_URL}/api/sessions/${ourSessionId}/preview-mode`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ is_preview_mode: false })
+                // Safe parse - might already be object
+                const allImages = typeof checkData.generated_images === 'string' 
+                  ? JSON.parse(checkData.generated_images)
+                  : checkData.generated_images || {};
+                const allSelected = typeof checkData.selected_images === 'string'
+                  ? JSON.parse(checkData.selected_images)
+                  : checkData.selected_images || {};
+                
+                if (Object.keys(allSelected).length === 0) {
+                  Object.keys(allImages).forEach(idx => {
+                    // allImages[idx] is an array of images, select the first one
+                    allSelected[idx] = Array.isArray(allImages[idx])
+                      ? allImages[idx][0]
+                      : allImages[idx];
                   });
                 }
                 
-                clearInterval(progressInterval);
-                setBatchProgress(100);
-                setBatchGenerating(false);
-                
-                // Move to success page
-                setTimeout(() => {
-                  setCurrentStep('success');
-                }, 1500);
-              } catch (error) {
-                console.error('Final generation error:', error);
-                // Even if generation fails, show success page
-                setCurrentStep('success');
+                setGeneratedImages(allImages);
+                setSelectedVariations(allSelected);
+                setIsPreviewMode(false);
+                setCurrentStep('preview');
               }
-            }, 500);
-          } else {
-            // No preview mode data - just show success
-            setCurrentStep('success');
+            }, 3000); // Check every 3 seconds
+            
+            // Timeout after 2 minutes
+            setTimeout(() => {
+              clearInterval(checkInterval);
+              alert('Image generation is taking longer than expected. Please refresh the page.');
+            }, 120000);
           }
         } else {
+          // No session match found
           setCurrentStep('success');
         }
         
@@ -770,11 +797,19 @@ export default function MasterpieceMe() {
   const regenerateArtist = async (artistIndex) => {
     setIsGenerating(true);
     const artist = artists[artistIndex];
-    const promptKey = selectedGender === 'Male' ? 'malePrompt' : 
-                      selectedGender === 'Female' ? 'femalePrompt' : 'petPrompt';
+    
+    // Determine correct prompt based on gender
+    let promptKey;
+    if (selectedGender === 'Male') promptKey = 'malePrompt';
+    else if (selectedGender === 'Female') promptKey = 'femalePrompt';
+    else if (selectedGender === 'MalePet') promptKey = 'malePetPrompt';
+    else if (selectedGender === 'FemalePet') promptKey = 'femalePetPrompt';
+    
     const artistPrompt = artist[promptKey];
 
     try {
+      console.log(`🎨 Generating single variation for ${artist.name} ($0.15)...`);
+      
       const response = await fetch(`${BACKEND_URL}/api/generate-variations`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -782,23 +817,78 @@ export default function MasterpieceMe() {
           image: uploadedImage,
           artistName: artist.name,
           artistPrompt: artistPrompt,
-          count: 1
+          count: 1  // Only generate 1 image to save cost
         })
       });
 
       const data = await response.json();
 
-      if (data.success) {
-        const newImages = { ...generatedImages };
-        newImages[artistIndex] = data.variations;
-        setGeneratedImages(newImages);
-        setShowArtistModal(false);
-        setIsGenerating(false);
+      if (data.success && data.variations && data.variations.length > 0) {
+        const newImage = data.variations[0];
+        
+        // Add new image to history
+        const currentHistory = imageHistory[artistIndex] || [];
+        const updatedHistory = [...currentHistory, newImage];
+        
+        setImageHistory({
+          ...imageHistory,
+          [artistIndex]: updatedHistory
+        });
+        
+        // Set current index to newest image
+        setCurrentHistoryIndex({
+          ...currentHistoryIndex,
+          [artistIndex]: updatedHistory.length - 1
+        });
+        
+        // Update generatedImages to show current image
+        setGeneratedImages({
+          ...generatedImages,
+          [artistIndex]: [newImage]
+        });
+        
+        console.log(`✅ New variation generated (Total: ${updatedHistory.length})`);
       }
     } catch (error) {
       console.error('❌ Regeneration failed:', error);
+      alert('Failed to generate new image. Please try again.');
+    } finally {
       setIsGenerating(false);
-      alert('Regeneration failed');
+    }
+  };
+
+  // Navigate through image history
+  const navigateHistory = (artistIndex, direction) => {
+    const history = imageHistory[artistIndex] || [];
+    const currentIndex = currentHistoryIndex[artistIndex] || 0;
+    
+    let newIndex;
+    if (direction === 'back') {
+      newIndex = Math.max(0, currentIndex - 1);
+    } else {
+      newIndex = Math.min(history.length - 1, currentIndex + 1);
+    }
+    
+    setCurrentHistoryIndex({
+      ...currentHistoryIndex,
+      [artistIndex]: newIndex
+    });
+    
+    // Update displayed image
+    setGeneratedImages({
+      ...generatedImages,
+      [artistIndex]: [history[newIndex]]
+    });
+  };
+
+  // Select current image and close modal
+  const selectCurrentImage = (artistIndex) => {
+    const history = imageHistory[artistIndex] || [];
+    const currentIndex = currentHistoryIndex[artistIndex] || 0;
+    const selectedImage = history[currentIndex] || generatedImages[artistIndex]?.[0];
+    
+    if (selectedImage) {
+      selectNewVariation(artistIndex, selectedImage);
     }
   };
 
@@ -843,6 +933,36 @@ export default function MasterpieceMe() {
     }
   };
 
+  // NEW: Confirm order after user reviews all images
+  const handleConfirmOrder = async () => {
+    setIsSubmittingOrder(true);
+    
+    try {
+      console.log('📋 Confirming order and submitting to Lulu...');
+      
+      const response = await fetch(`${BACKEND_URL}/api/confirm-order`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        console.log('✅ Order placed successfully!');
+        setOrderNumber(data.orderId);
+        setCurrentStep('success');
+      } else {
+        alert('Failed to place order: ' + (data.error || 'Unknown error'));
+      }
+    } catch (error) {
+      console.error('❌ Error placing order:', error);
+      alert('Failed to place order. Please try again.');
+    } finally {
+      setIsSubmittingOrder(false);
+    }
+  };
+
   const handleSaveDedication = async () => {
     setDedication(editedDedication);
     await saveSession({ dedication: editedDedication.trim() });
@@ -876,7 +996,7 @@ export default function MasterpieceMe() {
             className="flex items-center gap-2 text-2xl font-bold">
             <span>🎨</span>
             <span className="bg-gradient-to-r from-amber-600 to-red-600 text-transparent bg-clip-text">
-              MasterpieceMe
+              BuildaBook
             </span>
           </button>
 
@@ -914,157 +1034,399 @@ export default function MasterpieceMe() {
 
       {/* HOME STEP */}
       {currentStep === 'home' && (
-        <section className="max-w-6xl mx-auto px-4 py-20">
-          {/* SAMPLE BOOKS BROWSER */}
-          {!uploadedImage && (
-            <div className="mb-16">
-              <div className="text-center mb-12">
-                <h2 className="text-4xl md:text-5xl font-bold mb-4">Browse Sample Books First</h2>
-                <p className="text-xl text-gray-600">
-                  See what your personalized book will look like with our pre-made examples
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-                {/* MALE SAMPLE */}
-                <button
-                  onClick={() => {
-                    setCurrentSampleBook('male');
-                    setShowSampleBrowser(true);
-                  }}
-                  className="group bg-white rounded-3xl p-8 shadow-xl hover:shadow-2xl transition transform hover:scale-105">
-                  <div className="text-6xl mb-4">👨</div>
-                  <h3 className="text-2xl font-bold mb-2">Male Example</h3>
-                  <p className="text-gray-600 mb-4">Professional male portrait across 12 art styles</p>
-                  <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 px-6 rounded-full font-bold group-hover:shadow-lg transition">
-                    View Sample Book →
-                  </div>
-                </button>
-
-                {/* FEMALE SAMPLE */}
-                <button
-                  onClick={() => {
-                    setCurrentSampleBook('female');
-                    setShowSampleBrowser(true);
-                  }}
-                  className="group bg-white rounded-3xl p-8 shadow-xl hover:shadow-2xl transition transform hover:scale-105">
-                  <div className="text-6xl mb-4">👩</div>
-                  <h3 className="text-2xl font-bold mb-2">Female Example</h3>
-                  <p className="text-gray-600 mb-4">Professional female portrait across 12 art styles</p>
-                  <div className="bg-gradient-to-r from-pink-600 to-red-600 text-white py-3 px-6 rounded-full font-bold group-hover:shadow-lg transition">
-                    View Sample Book →
-                  </div>
-                </button>
-
-                {/* PET SAMPLE */}
-                <button
-                  onClick={() => {
-                    setCurrentSampleBook('pet');
-                    setShowSampleBrowser(true);
-                  }}
-                  className="group bg-white rounded-3xl p-8 shadow-xl hover:shadow-2xl transition transform hover:scale-105">
-                  <div className="text-6xl mb-4">🐕</div>
-                  <h3 className="text-2xl font-bold mb-2">Pet Example</h3>
-                  <p className="text-gray-600 mb-4">Furry friend portrait across 12 art styles</p>
-                  <div className="bg-gradient-to-r from-green-600 to-teal-600 text-white py-3 px-6 rounded-full font-bold group-hover:shadow-lg transition">
-                    View Sample Book →
-                  </div>
-                </button>
-              </div>
-
-              <div className="text-center">
-                <p className="text-2xl font-bold text-gray-700 mb-4">Ready to create your own?</p>
-                <p className="text-lg text-gray-500 mb-8">↓ Upload your photo below ↓</p>
-              </div>
-            </div>
-          )}
-
-          <div className="text-center mb-12">
-            <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-amber-600 to-red-600 text-transparent bg-clip-text">
-              See Yourself as a Masterpiece
-            </h1>
-            <p className="text-xl md:text-2xl text-gray-600 mb-8">
-              Transform your photo into 12 legendary art styles
-            </p>
+        <>
+          {/* ANIMATED BACKGROUND */}
+          <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
+            <div className="absolute inset-0 bg-gradient-to-br from-purple-50 via-white to-amber-50"></div>
+            <div className="absolute top-0 left-1/4 w-96 h-96 bg-purple-200 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob"></div>
+            <div className="absolute top-0 right-1/4 w-96 h-96 bg-yellow-200 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob animation-delay-2000"></div>
+            <div className="absolute bottom-0 left-1/3 w-96 h-96 bg-pink-200 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob animation-delay-4000"></div>
           </div>
 
-          <div
-            className={`relative border-4 border-dashed rounded-3xl p-12 transition ${
-              isDragging ? 'border-amber-600 bg-amber-50' : 'border-gray-300 bg-white'
-            }`}
-            onDragOver={(e) => {
-              e.preventDefault();
-              setIsDragging(true);
-            }}
-            onDragLeave={() => setIsDragging(false)}
-            onDrop={handleDrop}>
-            
-            {uploadedImage ? (
-              <div className="text-center">
-                <img
-                  src={uploadedImage}
-                  alt="Uploaded"
-                  className="mx-auto max-w-md rounded-2xl shadow-xl mb-6"
-                />
-                <p className="text-green-600 font-semibold mb-4">✓ Photo uploaded successfully!</p>
+          <section className="relative max-w-7xl mx-auto px-4 py-12">
+            {/* HERO SECTION - Split Layout */}
+            <div className="grid lg:grid-cols-2 gap-12 items-center mb-24">
+              {/* LEFT: Copy + CTA */}
+              <div className="space-y-6 order-2 lg:order-1">
+                {/* Social Proof Badge */}
+                <div className="inline-flex items-center gap-3 bg-white/90 backdrop-blur-sm px-5 py-3 rounded-full shadow-xl border border-amber-200">
+                  <div className="flex -space-x-3">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 border-2 border-white"></div>
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-pink-400 to-pink-600 border-2 border-white"></div>
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-green-400 to-green-600 border-2 border-white"></div>
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 border-2 border-white"></div>
+                  </div>
+                  <span className="text-sm font-bold text-amber-600">
+                    1,247+ masterpieces created ✨
+                  </span>
+                </div>
+                
+                <h1 className="text-5xl md:text-7xl font-black leading-tight">
+                  Turn Any Photo Into
+                  <span className="block mt-2 bg-gradient-to-r from-amber-600 via-red-600 to-pink-600 text-transparent bg-clip-text">
+                    Museum-Quality Art
+                  </span>
+                </h1>
+                
+                <p className="text-xl md:text-2xl text-gray-700 leading-relaxed">
+                  See yourself painted by <span className="font-black text-amber-600">12 legendary artists</span> in a stunning 32-page keepsake book
+                </p>
+                
+                {/* Trust Badges */}
+                <div className="flex flex-wrap gap-3">
+                  <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-full shadow-md border-2 border-green-200">
+                    <Check className="w-5 h-5 text-green-600" />
+                    <span className="font-bold text-sm">FREE Preview</span>
+                  </div>
+                  <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-full shadow-md border-2 border-blue-200">
+                    <Check className="w-5 h-5 text-blue-600" />
+                    <span className="font-bold text-sm">FREE Shipping</span>
+                  </div>
+                  <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-full shadow-md border-2 border-purple-200">
+                    <Check className="w-5 h-5 text-purple-600" />
+                    <span className="font-bold text-sm">30-Day Guarantee</span>
+                  </div>
+                </div>
+
+                {/* Primary CTA */}
+                {!uploadedImage && (
+                  <div className="space-y-4 pt-4">
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="group relative w-full lg:w-auto px-10 py-5 bg-gradient-to-r from-amber-600 via-red-600 to-pink-600 text-white rounded-2xl font-black text-xl shadow-2xl hover:shadow-amber-500/50 transition-all duration-300 transform hover:scale-105 overflow-hidden">
+                      <div className="absolute inset-0 bg-white/20 transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+                      <span className="relative flex items-center justify-center gap-3">
+                        <Upload className="w-6 h-6 group-hover:animate-bounce" />
+                        Get Started FREE
+                      </span>
+                    </button>
+                    <p className="text-center lg:text-left text-sm text-gray-600">
+                      🔒 <span className="font-semibold">No credit card</span> • See your Van Gogh in 30 seconds
+                    </p>
+                  </div>
+                )}
               </div>
-            ) : (
-              <div className="text-center">
-                <Upload className="w-20 h-20 mx-auto mb-4 text-amber-600" />
-                <h3 className="text-2xl font-bold mb-2">Upload Your Photo</h3>
-                <p className="text-gray-600 mb-6">Drag & drop or click to browse</p>
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleFileChange}
-                  accept="image/*"
-                  className="hidden"
-                />
+
+              {/* RIGHT: 3D Book Mockup */}
+              <div className="space-y-8 order-1 lg:order-2">
+                <div className="relative group" style={{perspective: '1000px'}}>
+                  <div className="relative transform transition-all duration-700 group-hover:scale-110" style={{transformStyle: 'preserve-3d', transform: 'rotateY(-15deg) rotateX(5deg)'}}>
+                    <div className="absolute -inset-6 bg-gradient-to-r from-amber-400 via-red-400 to-pink-400 rounded-3xl blur-3xl opacity-40 group-hover:opacity-60 transition-opacity animate-pulse"></div>
+                    
+                    <div className="relative bg-white rounded-2xl shadow-2xl overflow-hidden border-8 border-white">
+                      <div className="aspect-[3/4] bg-gradient-to-br from-purple-600 via-pink-600 to-red-600 p-12 flex flex-col items-center justify-center text-white">
+                        <div className="text-7xl mb-6">🎨</div>
+                        <h3 className="font-black text-5xl text-center mb-3 drop-shadow-2xl">Your Name</h3>
+                        <div className="w-24 h-1 bg-white/50 rounded-full mb-4"></div>
+                        <p className="text-xl font-light italic opacity-90">painted by</p>
+                        <p className="font-black text-4xl mt-2 drop-shadow-lg">12 Masters</p>
+                      </div>
+                    </div>
+
+                    <div className="absolute top-0 right-0 w-3 h-full bg-gradient-to-l from-gray-400 to-transparent opacity-60"></div>
+                    
+                    <div className="absolute -top-4 -right-4 bg-gradient-to-br from-yellow-400 to-orange-500 text-white px-4 py-2 rounded-xl font-black text-sm shadow-2xl animate-bounce">
+                      32 Pages ✨
+                    </div>
+                    <div className="absolute -bottom-4 -left-4 bg-gradient-to-br from-green-400 to-emerald-600 text-white px-4 py-2 rounded-xl font-black text-sm shadow-2xl">
+                      Premium
+                    </div>
+                  </div>
+                </div>
+
+                {/* VIDEO PLACEHOLDER */}
+                <div className="relative bg-gradient-to-br from-gray-900 to-black rounded-2xl overflow-hidden shadow-2xl group cursor-pointer transform hover:scale-105 transition-transform">
+                  <div className="aspect-video flex items-center justify-center relative">
+                    <div className="absolute inset-0 bg-gradient-to-br from-purple-900/30 to-pink-900/30"></div>
+                    <div className="relative z-10 text-center space-y-4">
+                      <div className="w-20 h-20 mx-auto bg-white/20 backdrop-blur-lg rounded-full flex items-center justify-center group-hover:bg-white/30 group-hover:scale-110 transition-all shadow-2xl">
+                        <div className="w-0 h-0 border-l-[24px] border-l-white border-y-[14px] border-y-transparent ml-1"></div>
+                      </div>
+                      <p className="text-white font-bold text-lg">Watch Your Transformation</p>
+                      <p className="text-gray-300 text-sm">30-second preview • Coming soon</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 12 ARTISTS INTERACTIVE GRID */}
+            {!uploadedImage && (
+              <div className="mb-24">
+                <div className="text-center mb-12">
+                  <h2 className="text-4xl md:text-6xl font-black mb-4">
+                    12 Legendary Artists Paint <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-600 to-red-600">YOU</span>
+                  </h2>
+                  <p className="text-xl text-gray-600">Hover to see the magic ✨</p>
+                </div>
+
+                <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                  {[
+                    { name: 'Van Gogh', emoji: '🌟', color: 'from-blue-600 to-yellow-500' },
+                    { name: 'Picasso', emoji: '🎨', color: 'from-red-600 to-pink-500' },
+                    { name: 'Warhol', emoji: '🎭', color: 'from-purple-600 to-pink-500' },
+                    { name: 'Monet', emoji: '🌊', color: 'from-blue-500 to-green-400' },
+                    { name: 'Da Vinci', emoji: '🖼️', color: 'from-amber-700 to-yellow-600' },
+                    { name: 'Dalí', emoji: '⏰', color: 'from-orange-600 to-red-500' },
+                    { name: 'Rembrandt', emoji: '💡', color: 'from-amber-800 to-orange-600' },
+                    { name: 'Munch', emoji: '😱', color: 'from-red-700 to-orange-500' },
+                    { name: 'Vermeer', emoji: '💎', color: 'from-blue-700 to-cyan-500' },
+                    { name: 'Michelangelo', emoji: '🗿', color: 'from-gray-600 to-blue-400' },
+                    { name: 'Raphael', emoji: '👼', color: 'from-pink-500 to-rose-400' },
+                    { name: 'Grant Wood', emoji: '🌾', color: 'from-green-700 to-yellow-600' }
+                  ].map((artist, idx) => (
+                    <div key={idx} className="group relative bg-white/80 backdrop-blur-sm rounded-3xl p-6 shadow-xl hover:shadow-2xl transition-all duration-500 transform hover:scale-125 hover:-translate-y-3 cursor-pointer overflow-hidden">
+                      <div className={`absolute inset-0 bg-gradient-to-br ${artist.color} opacity-0 group-hover:opacity-20 transition-opacity duration-500`}></div>
+                      <div className="relative z-10">
+                        <div className="text-4xl mb-2 transform group-hover:scale-125 group-hover:rotate-12 transition-transform duration-500">{artist.emoji}</div>
+                        <p className="font-bold text-xs text-gray-800 group-hover:text-amber-600 transition-colors">{artist.name}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* PROBLEM/SOLUTION SPLIT */}
+            {!uploadedImage && (
+              <div className="mb-24 relative">
+                <div className="absolute inset-0 bg-gradient-to-br from-amber-100 to-orange-100 rounded-[3rem] transform -rotate-1"></div>
+                <div className="relative bg-white rounded-[3rem] p-8 md:p-16 shadow-2xl">
+                  <h2 className="text-4xl md:text-6xl font-black text-center mb-12">
+                    The Gift That <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-600 to-red-600">Nobody</span> Forgets
+                  </h2>
+                  <div className="grid lg:grid-cols-2 gap-8 md:gap-12">
+                    <div className="space-y-6 p-8 bg-gray-50 rounded-3xl">
+                      <div className="text-7xl">😕</div>
+                      <h3 className="text-2xl md:text-3xl font-black text-gray-800">The Problem</h3>
+                      <p className="text-lg md:text-xl text-gray-700 leading-relaxed">
+                        Generic presents get forgotten. Photo frames collect dust. Gift cards feel impersonal. 
+                        <span className="block mt-3 font-semibold">Nothing feels truly special anymore.</span>
+                      </p>
+                    </div>
+                    <div className="space-y-6 p-8 bg-gradient-to-br from-amber-50 to-orange-50 rounded-3xl border-4 border-amber-200">
+                      <div className="text-7xl">🎁</div>
+                      <h3 className="text-2xl md:text-3xl font-black text-amber-900">The Solution</h3>
+                      <p className="text-lg md:text-xl text-gray-800 leading-relaxed">
+                        A one-of-a-kind art book so breathtaking they'll display it on their coffee table. 
+                        <span className="block mt-3 font-bold text-amber-700">Something they'll show everyone who visits.</span>
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* SAMPLE BOOKS - Interactive Preview */}
+            {!uploadedImage && (
+              <div className="mb-24">
+                <div className="text-center mb-12">
+                  <h2 className="text-4xl md:text-6xl font-black mb-4">
+                    See <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600">Real Examples</span>
+                  </h2>
+                  <p className="text-xl text-gray-600">Click to browse complete 32-page books</p>
+                </div>
+
+                <div className="grid lg:grid-cols-3 gap-10">
+                  {[
+                    { type: 'male', icon: '👨', title: 'Male Portrait', desc: 'Professional transformed by 12 masters', gradient: 'from-blue-600 to-blue-700' },
+                    { type: 'female', icon: '👩', title: 'Female Portrait', desc: 'Elegant beauty across all styles', gradient: 'from-pink-600 to-red-600' },
+                    { type: 'pet', icon: '🐕', title: 'Pet Portrait', desc: 'Even furry friends become art!', gradient: 'from-green-600 to-teal-600' }
+                  ].map((sample) => (
+                    <button
+                      key={sample.type}
+                      onClick={() => {
+                        setCurrentSampleBook(sample.type);
+                        setShowSampleBrowser(true);
+                      }}
+                      className="group relative bg-white rounded-[2.5rem] p-10 shadow-2xl hover:shadow-3xl transition-all duration-500 transform hover:scale-105 hover:-translate-y-2 overflow-hidden">
+                      <div className={`absolute inset-0 bg-gradient-to-br ${sample.gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-500`}></div>
+                      
+                      <div className="relative z-10 space-y-6">
+                        <div className="text-8xl transform group-hover:scale-110 group-hover:rotate-6 transition-transform duration-500">{sample.icon}</div>
+                        <div>
+                          <h3 className="text-3xl font-black mb-3">{sample.title}</h3>
+                          <p className="text-gray-600 text-lg">{sample.desc}</p>
+                        </div>
+                        <div className={`bg-gradient-to-r ${sample.gradient} text-white py-4 px-8 rounded-2xl font-black text-lg group-hover:shadow-2xl transition-all inline-flex items-center gap-3`}>
+                          View Sample
+                          <span className="transform group-hover:translate-x-2 transition-transform">→</span>
+                        </div>
+                      </div>
+
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-white/20 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-700"></div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* HOW IT WORKS - Timeline */}
+            {!uploadedImage && (
+              <div className="mb-24">
+                <h2 className="text-4xl md:text-6xl font-black text-center mb-16">
+                  Simple as <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-600 to-red-600">1-2-3-4</span>
+                </h2>
+                
+                <div className="relative max-w-5xl mx-auto">
+                  {/* Connection line - desktop only */}
+                  <div className="hidden lg:block absolute top-12 left-0 right-0 h-2 bg-gradient-to-r from-amber-300 via-red-300 to-pink-300 rounded-full"></div>
+                  
+                  <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-4 relative">
+                    {[
+                      { num: '1', icon: '📸', title: 'Upload', desc: 'Any photo - you, family, pets' },
+                      { num: '2', icon: '🎨', title: 'Preview FREE', desc: 'Van Gogh in 30 seconds' },
+                      { num: '3', icon: '✨', title: 'Personalize', desc: 'Name, dedication, colors' },
+                      { num: '4', icon: '📦', title: 'Delivered', desc: 'Ships FREE in 7-10 days' }
+                    ].map((step, idx) => (
+                      <div key={idx} className="relative text-center group">
+                        <div className="w-24 h-24 bg-gradient-to-br from-amber-600 to-red-600 text-white rounded-3xl flex items-center justify-center text-4xl font-black mx-auto mb-6 shadow-2xl relative z-10 group-hover:scale-125 group-hover:rotate-6 transition-all duration-500">
+                          {step.num}
+                        </div>
+                        <div className="text-6xl mb-4 group-hover:scale-125 transition-transform">{step.icon}</div>
+                        <h3 className="font-black text-2xl mb-3">{step.title}</h3>
+                        <p className="text-gray-600 text-lg">{step.desc}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* MAIN CTA - Upload Section */}
+            <div className="max-w-4xl mx-auto">
+              <div className="text-center mb-12">
+                <h2 className="text-4xl md:text-6xl font-black mb-6">
+                  {uploadedImage ? '✓ Ready to Create!' : 'Create Your Masterpiece'}
+                </h2>
+                {!uploadedImage && (
+                  <p className="text-2xl text-gray-600">
+                    Upload now → See <span className="font-black text-amber-600">FREE Van Gogh preview</span> in 30 seconds
+                  </p>
+                )}
+              </div>
+
+              <div
+                className={`relative border-4 border-dashed rounded-[3rem] p-16 transition-all duration-500 ${
+                  isDragging 
+                    ? 'border-amber-600 bg-amber-50 scale-105 shadow-2xl' 
+                    : uploadedImage 
+                      ? 'border-green-500 bg-green-50 shadow-2xl'
+                      : 'border-gray-300 bg-white/50 backdrop-blur-sm hover:border-amber-400 hover:bg-amber-50/50 hover:scale-105 shadow-xl'
+                }`}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setIsDragging(true);
+                }}
+                onDragLeave={() => setIsDragging(false)}
+                onDrop={handleDrop}>
+                
+                {uploadedImage ? (
+                  <div className="text-center space-y-8">
+                    <div className="relative inline-block">
+                      <img
+                        src={uploadedImage}
+                        alt="Uploaded"
+                        className="mx-auto max-w-md rounded-3xl shadow-2xl border-8 border-white"
+                      />
+                      <div className="absolute -top-6 -right-6 bg-green-500 text-white p-5 rounded-3xl shadow-xl animate-bounce">
+                        <Check className="w-10 h-10" />
+                      </div>
+                    </div>
+                    <p className="text-green-600 font-black text-3xl">Perfect! Let's create your masterpiece ✨</p>
+                  </div>
+                ) : (
+                  <div className="text-center space-y-8">
+                    <div className="relative inline-block">
+                      <Upload className="w-32 h-32 mx-auto text-amber-600 animate-bounce" />
+                      <div className="absolute inset-0 bg-amber-400 rounded-full blur-3xl opacity-20 animate-pulse"></div>
+                    </div>
+                    <div>
+                      <h3 className="text-4xl font-black mb-4">Drop Your Photo Here</h3>
+                      <p className="text-gray-600 text-xl">Or click below to browse</p>
+                    </div>
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleFileChange}
+                      accept="image/*"
+                      className="hidden"
+                    />
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="px-14 py-7 bg-gradient-to-r from-amber-600 to-red-600 text-white rounded-2xl font-black text-2xl shadow-2xl hover:shadow-amber-500/50 transition-all duration-500 transform hover:scale-110">
+                      Choose Photo
+                    </button>
+                    <div className="flex items-center justify-center gap-6 text-sm text-gray-500">
+                      {['No credit card', 'FREE preview', 'Secure & private'].map((item, i) => (
+                        <div key={i} className="flex items-center gap-2">
+                          <Check className="w-5 h-5 text-green-600" />
+                          <span className="font-semibold">{item}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* CAPTCHA SECTION */}
+            {!captchaVerified && (
+              <div className="mt-8 text-center">
+                <p className="text-gray-600 mb-4">Complete security check to continue:</p>
+                <div className="flex justify-center">
+                  <Turnstile
+                    siteKey={TURNSTILE_SITE_KEY}
+                    onSuccess={handleCaptchaSuccess}
+                    theme="light"
+                  />
+                </div>
+              </div>
+            )}
+
+            {captchaVerified && !uploadedImage && (
+              <div className="mt-8 text-center">
+                <p className="text-green-600 font-semibold">✓ Verified! You can now upload your photo above.</p>
+              </div>
+            )}
+
+            {uploadedImage && captchaVerified && !sessionId && (
+              <div className="mt-8 text-center">
+                <Loader className="w-8 h-8 animate-spin mx-auto text-amber-600" />
+                <p className="mt-2 text-gray-600">Creating your session...</p>
+              </div>
+            )}
+
+            {uploadedImage && sessionId && (
+              <div className="mt-8 text-center">
                 <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="px-8 py-4 bg-gradient-to-r from-amber-600 to-red-600 text-white rounded-full font-bold hover:shadow-xl transition">
-                  Select Photo
+                  onClick={() => setCurrentStep('verify-contact')}
+                  className="px-12 py-4 bg-gradient-to-r from-amber-600 to-red-600 text-white rounded-full font-bold text-xl hover:shadow-xl transition">
+                  Continue →
                 </button>
               </div>
             )}
-          </div>
+          </section>
 
-          {!captchaVerified && (
-            <div className="mt-8 text-center">
-              <p className="text-gray-600 mb-4">Complete security check to continue:</p>
-              <div className="flex justify-center">
-                <Turnstile
-                  siteKey={TURNSTILE_SITE_KEY}
-                  onSuccess={handleCaptchaSuccess}
-                  theme="light"
-                />
-              </div>
-            </div>
-          )}
-
-          {captchaVerified && !uploadedImage && (
-            <div className="mt-8 text-center">
-              <p className="text-green-600 font-semibold">✓ Verified! You can now upload your photo above.</p>
-            </div>
-          )}
-
-          {uploadedImage && captchaVerified && !sessionId && (
-            <div className="mt-8 text-center">
-              <Loader className="w-8 h-8 animate-spin mx-auto text-amber-600" />
-              <p className="mt-2 text-gray-600">Creating your session...</p>
-            </div>
-          )}
-
-          {uploadedImage && sessionId && (
-            <div className="mt-8 text-center">
-              <button
-                onClick={() => setCurrentStep('verify-contact')}
-                className="px-12 py-4 bg-gradient-to-r from-amber-600 to-red-600 text-white rounded-full font-bold text-xl hover:shadow-xl transition">
-                Continue →
-              </button>
-            </div>
-          )}
-        </section>
+          {/* CUSTOM ANIMATIONS CSS */}
+          <style jsx>{`
+            @keyframes blob {
+              0%, 100% { transform: translate(0, 0) scale(1); }
+              25% { transform: translate(20px, -50px) scale(1.1); }
+              50% { transform: translate(-20px, 20px) scale(0.9); }
+              75% { transform: translate(50px, 50px) scale(1.05); }
+            }
+            .animate-blob {
+              animation: blob 7s infinite;
+            }
+            .animation-delay-2000 {
+              animation-delay: 2s;
+            }
+            .animation-delay-4000 {
+              animation-delay: 4s;
+            }
+          `}</style>
+        </>
       )}
 
       {/* VERIFY CONTACT STEP */}
@@ -1509,9 +1871,14 @@ export default function MasterpieceMe() {
               {artists.map((artist, idx) => {
                 // In preview mode, show real image for Van Gogh (#6), samples for others
                 const isRealImage = isPreviewMode ? idx === 6 : true;
+                
+                // Map gender to sample image category
+                const sampleCategory = selectedGender?.toLowerCase().includes('pet') ? 'pet' : 
+                                      selectedGender?.toLowerCase() === 'female' ? 'female' : 'male';
+                
                 const imageData = isRealImage && selectedVariations[idx] 
                   ? selectedVariations[idx]
-                  : { url: sampleImages[selectedGender?.toLowerCase() || 'male'][idx] };
+                  : { url: sampleImages[sampleCategory][idx] };
                 
                 return (
                   <button
@@ -2045,20 +2412,20 @@ export default function MasterpieceMe() {
                   </div>
                 )}
 
-                {/* ARTIST CHANGE MODAL */}
+                {/* ARTIST CHANGE MODAL - SINGLE IMAGE GENERATOR */}
                 {showArtistModal && selectedArtistForChange !== null && (
                   <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
                     <div className="bg-white rounded-3xl p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
                       <div className="flex justify-between items-center mb-6">
                         <h3 className="text-3xl font-bold">
-                          Choose New {artists[selectedArtistForChange].name} Portrait
+                          Change {artists[selectedArtistForChange].name} Portrait
                         </h3>
                         <button
                           onClick={() => {
                             setShowArtistModal(false);
                             setSelectedArtistForChange(null);
                           }}
-                          className="p-2 hover:bg-gray-100 rounded-full">
+                          className="p-2 hover:bg-gray-100 rounded-full transition">
                           <X className="w-6 h-6" />
                         </button>
                       </div>
@@ -2067,36 +2434,84 @@ export default function MasterpieceMe() {
                         <div className="text-center py-12">
                           <Loader className="w-16 h-16 text-amber-600 animate-spin mx-auto mb-4" />
                           <p className="text-xl font-bold">Generating new image...</p>
+                          <p className="text-sm text-gray-500 mt-2">Cost: $0.15</p>
                         </div>
                       ) : (
                         <>
+                          {/* CURRENT IMAGE DISPLAY WITH HISTORY NAVIGATION */}
                           <div className="mb-6">
-                            {generatedImages[selectedArtistForChange]?.[0] && (
-                              <button
-                                onClick={() => selectNewVariation(selectedArtistForChange, generatedImages[selectedArtistForChange][0])}
-                                className="relative group w-full">
-                                <div className="overflow-hidden rounded-xl shadow-lg hover:shadow-2xl transition">
+                            {(() => {
+                              const history = imageHistory[selectedArtistForChange] || [];
+                              const currentIndex = currentHistoryIndex[selectedArtistForChange] || 0;
+                              const currentImage = history[currentIndex] || generatedImages[selectedArtistForChange]?.[0];
+                              
+                              return currentImage ? (
+                                <div className="relative">
                                   <img
-                                    src={generatedImages[selectedArtistForChange][0].url}
-                                    alt="New variation"
-                                    className="w-full h-auto object-contain group-hover:scale-105 transition duration-300"
+                                    src={currentImage.url}
+                                    alt="Current variation"
+                                    className="w-full h-auto object-contain rounded-xl shadow-lg"
                                   />
-                                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
-                                    <div className="bg-white rounded-full p-4">
-                                      <Check className="w-8 h-8 text-amber-600" />
+                                  
+                                  {/* History navigation overlay */}
+                                  {history.length > 1 && (
+                                    <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-white/95 backdrop-blur-sm rounded-full px-6 py-3 shadow-2xl flex items-center gap-4">
+                                      <button
+                                        onClick={() => navigateHistory(selectedArtistForChange, 'back')}
+                                        disabled={currentIndex === 0}
+                                        className={`p-2 rounded-full transition ${
+                                          currentIndex === 0 
+                                            ? 'bg-gray-200 text-gray-400 cursor-not-allowed' 
+                                            : 'bg-amber-500 text-white hover:bg-amber-600'
+                                        }`}>
+                                        <ChevronLeft className="w-6 h-6" />
+                                      </button>
+                                      
+                                      <span className="font-bold text-gray-700 min-w-[60px] text-center">
+                                        {currentIndex + 1} / {history.length}
+                                      </span>
+                                      
+                                      <button
+                                        onClick={() => navigateHistory(selectedArtistForChange, 'forward')}
+                                        disabled={currentIndex === history.length - 1}
+                                        className={`p-2 rounded-full transition ${
+                                          currentIndex === history.length - 1
+                                            ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                            : 'bg-amber-500 text-white hover:bg-amber-600'
+                                        }`}>
+                                        <ChevronRight className="w-6 h-6" />
+                                      </button>
                                     </div>
-                                  </div>
+                                  )}
                                 </div>
-                                <p className="text-center mt-4 font-bold text-lg">Click to Use This Image</p>
-                              </button>
-                            )}
+                              ) : (
+                                <div className="text-center py-12 bg-gray-100 rounded-xl">
+                                  <p className="text-gray-500">Click "Shuffle" below to generate a new image</p>
+                                </div>
+                              );
+                            })()}
                           </div>
 
-                          <button
-                            onClick={() => regenerateArtist(selectedArtistForChange)}
-                            className="w-full bg-purple-600 hover:bg-purple-700 text-white py-4 rounded-full font-bold text-lg transition">
-                            🔄 Generate New Image
-                          </button>
+                          {/* ACTION BUTTONS */}
+                          <div className="grid grid-cols-2 gap-4">
+                            <button
+                              onClick={() => regenerateArtist(selectedArtistForChange)}
+                              disabled={isGenerating}
+                              className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white py-4 rounded-xl font-bold text-lg transition flex items-center justify-center gap-2">
+                              🔄 Shuffle ($0.15)
+                            </button>
+                            
+                            <button
+                              onClick={() => selectCurrentImage(selectedArtistForChange)}
+                              className="bg-green-600 hover:bg-green-700 text-white py-4 rounded-xl font-bold text-lg transition flex items-center justify-center gap-2">
+                              <Check className="w-5 h-5" />
+                              Use This Image
+                            </button>
+                          </div>
+                          
+                          <p className="text-center text-sm text-gray-500 mt-4">
+                            {(imageHistory[selectedArtistForChange]?.length || 0)} variation{(imageHistory[selectedArtistForChange]?.length || 0) !== 1 ? 's' : ''} generated
+                          </p>
                         </>
                       )}
                     </div>
@@ -2170,14 +2585,42 @@ export default function MasterpieceMe() {
                       <span className="text-2xl font-bold text-amber-600">${price.toFixed(2)}</span>
                     </div>
                   </div>
-                  <button
-                    onClick={handleCheckout}
-                    className="w-full bg-gradient-to-r from-amber-600 to-red-600 text-white py-4 rounded-full font-bold hover:shadow-xl transition">
-                    {isPreviewMode ? 'Complete Your Masterpiece →' : 'Proceed to Secure Checkout →'}
-                  </button>
-                  {isPreviewMode && (
+                  
+                  {/* Show different button based on payment status */}
+                  {paymentStatus === 'paid' ? (
+                    <button
+                      onClick={handleConfirmOrder}
+                      disabled={isSubmittingOrder}
+                      className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white py-4 rounded-full font-bold text-xl shadow-xl transition flex items-center justify-center gap-2">
+                      {isSubmittingOrder ? (
+                        <>
+                          <Loader className="w-5 h-5 animate-spin" />
+                          Placing Order...
+                        </>
+                      ) : (
+                        <>
+                          <Check className="w-5 h-5" />
+                          Confirm & Place Order
+                        </>
+                      )}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleCheckout}
+                      className="w-full bg-gradient-to-r from-amber-600 to-red-600 text-white py-4 rounded-full font-bold hover:shadow-xl transition">
+                      {isPreviewMode ? 'Complete Your Masterpiece →' : 'Proceed to Secure Checkout →'}
+                    </button>
+                  )}
+                  
+                  {isPreviewMode && paymentStatus !== 'paid' && (
                     <p className="text-xs text-gray-500 text-center mt-3">
                       After payment, we'll generate YOUR photo in all 12 artist styles
+                    </p>
+                  )}
+                  
+                  {paymentStatus === 'paid' && (
+                    <p className="text-xs text-green-600 text-center mt-3 font-medium">
+                      ✅ Payment received! Review your images above, then confirm to place your order.
                     </p>
                   )}
                 </div>
@@ -2278,7 +2721,7 @@ export default function MasterpieceMe() {
 
             <div className="border-t pt-6">
               <p className="text-gray-600 mb-6">Questions about your order?</p>
-              <p className="text-sm text-gray-500">Contact us at support@masterpieceme.com</p>
+              <p className="text-sm text-gray-500">Contact us at support@buildabook.store</p>
             </div>
 
             <button 
@@ -2368,8 +2811,8 @@ export default function MasterpieceMe() {
       <footer className="bg-gray-900 text-white py-12 mt-20">
         <div className="max-w-7xl mx-auto px-4 text-center">
           <span className="text-2xl">🎨</span>
-          <p className="text-xl font-bold mt-2">MasterpieceMe</p>
-          <p className="text-gray-400 mt-2">Transform into legendary artwork</p>
+          <p className="text-xl font-bold mt-2">BuildaBook</p>
+          <p className="text-gray-400 mt-2">Turn photos into timeless art</p>
         </div>
       </footer>
     </div>
