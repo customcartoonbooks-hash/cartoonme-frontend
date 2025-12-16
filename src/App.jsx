@@ -337,11 +337,12 @@ export default function BuildaBook() {
               }
             }, 3000); // Check every 3 seconds
             
-            // Timeout after 2 minutes
+            // Timeout after 5 minutes (increased from 2 min for parallel generation)
             setTimeout(() => {
               clearInterval(checkInterval);
-              alert('Image generation is taking longer than expected. Please refresh the page.');
-            }, 120000);
+              console.log('⏰ Generation timeout - images may still be processing');
+              // Silently stop polling - user can manually refresh if needed
+            }, 300000); // 5 minutes
           }
         } else {
           // No session match found
