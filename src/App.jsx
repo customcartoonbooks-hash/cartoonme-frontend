@@ -57,6 +57,8 @@ export default function BuildaBook() {
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   const [showSampleBrowser, setShowSampleBrowser] = useState(false);
   const [currentSampleBook, setCurrentSampleBook] = useState('male');
+  const [currentSampleBookPage, setCurrentSampleBookPage] = useState(0);
+  const [sampleBookColor, setSampleBookColor] = useState('blue');
   // State for image history and navigation
   const [imageHistory, setImageHistory] = useState({}); // Store history per artist: { 0: [img1, img2], 1: [...] }
   const [currentHistoryIndex, setCurrentHistoryIndex] = useState({}); // Current index: { 0: 1, 1: 0 }
@@ -64,7 +66,6 @@ export default function BuildaBook() {
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
   
   const fileInputRef = useRef(null);
-  const codeInputsRef = useRef([]);
   const codeInputRefs = useRef([]);
 
   const colorOptions = [
@@ -305,13 +306,23 @@ export default function BuildaBook() {
             // Images still generating via webhook - show loading
             setCurrentStep('generating-final');
             
+            // Initialize progress
+            let pollCount = 0;
+            const maxPolls = 30; // 90 seconds / 3 seconds per poll
+            
             // Poll for completion
             const checkInterval = setInterval(async () => {
+              pollCount++;
+              // Update progress (simulate smooth progress over 90 seconds)
+              const estimatedProgress = Math.min(95, (pollCount / maxPolls) * 100);
+              setBatchProgress(estimatedProgress);
+              
               const checkResponse = await fetch(`${BACKEND_URL}/api/session/${ourSessionId}`);
               const checkData = await checkResponse.json();
               
               if (checkData.fulfillment_status === 'images_ready') {
                 clearInterval(checkInterval);
+                setBatchProgress(100); // Complete!
                 
                 // Safe parse - might already be object
                 const allImages = typeof checkData.generated_images === 'string' 
@@ -433,6 +444,27 @@ export default function BuildaBook() {
       }, 100);
     }
   }, [verificationSent]);
+
+  // Progress tracking for Van Gogh generation
+  useEffect(() => {
+    if (currentStep === 'generating-preview' && isGenerating) {
+      setGenerationProgress(0);
+      setEstimatedTimeLeft(30); // Van Gogh takes ~30 seconds
+      
+      const interval = setInterval(() => {
+        setGenerationProgress(prev => {
+          if (prev >= 95) return prev; // Stop at 95% until actually done
+          return prev + 1;
+        });
+        setEstimatedTimeLeft(prev => Math.max(0, prev - 1));
+      }, 300); // Update every 300ms (30 seconds / 100 = 300ms per %)
+      
+      return () => clearInterval(interval);
+    } else {
+      setGenerationProgress(0);
+      setEstimatedTimeLeft(30);
+    }
+  }, [currentStep, isGenerating]);
 
   const saveSession = async (updates) => {
     if (!sessionId) {
@@ -674,11 +706,16 @@ export default function BuildaBook() {
       selected_gender: gender,
       cover_color: coverColor
     });
-    setCurrentStep('generating-preview');
-    setIsGenerating(true);
     
-    // Generate ONLY Van Gogh preview
-    await generatePreviewImage(gender);
+    // Go to dedication page
+    setCurrentStep('dedication');
+    
+    // Start Van Gogh generation in BACKGROUND
+    setIsGenerating(true);
+    generatePreviewImage(gender).catch(error => {
+      console.error('Background generation error:', error);
+      setIsGenerating(false);
+    });
   };
 
   const generatePreviewImage = async (gender = selectedGender) => {
@@ -1070,7 +1107,7 @@ export default function BuildaBook() {
                 </h1>
                 
                 <p className="text-xl md:text-2xl text-gray-700 leading-relaxed">
-                  See yourself painted by <span className="font-black text-amber-600">12 legendary artists</span> in a stunning 32-page keepsake book
+                  See yourself painted by <span className="font-black text-amber-600">12 legendary artists</span> in a stunning 32-page gift book
                 </p>
                 
                 {/* Trust Badges */}
@@ -1078,10 +1115,6 @@ export default function BuildaBook() {
                   <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-full shadow-md border-2 border-green-200">
                     <Check className="w-5 h-5 text-green-600" />
                     <span className="font-bold text-sm">FREE Preview</span>
-                  </div>
-                  <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-full shadow-md border-2 border-blue-200">
-                    <Check className="w-5 h-5 text-blue-600" />
-                    <span className="font-bold text-sm">FREE Shipping</span>
                   </div>
                   <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-full shadow-md border-2 border-purple-200">
                     <Check className="w-5 h-5 text-purple-600" />
@@ -1538,7 +1571,7 @@ export default function BuildaBook() {
                     {[0, 1, 2, 3, 4, 5].map((index) => (
                       <input
                         key={index}
-                        ref={(el) => (codeInputsRef.current[index] = el)}
+                        ref={(el) => (codeInputRefs.current[index] = el)}
                         type="text"
                         inputMode="numeric"
                         maxLength={1}
@@ -1547,7 +1580,7 @@ export default function BuildaBook() {
                         onPaste={index === 0 ? handleCodePaste : undefined}
                         onKeyDown={(e) => {
                           if (e.key === 'Backspace' && !verificationCode[index] && index > 0) {
-                            codeInputsRef.current[index - 1]?.focus();
+                            codeInputRefs.current[index - 1]?.focus();
                           }
                         }}
                         className="w-12 h-14 md:w-16 md:h-20 text-center text-2xl md:text-3xl font-bold border-2 border-gray-300 rounded-xl focus:border-amber-600 focus:outline-none transition"
@@ -1635,6 +1668,102 @@ export default function BuildaBook() {
         </section>
       )}
 
+      {/* DEDICATION STEP - NEW! User fills out while Van Gogh generates */}
+      {currentStep === 'dedication' && (
+        <section className="max-w-4xl mx-auto px-4 py-20">
+          <div className="text-center mb-12">
+            <h2 className="text-4xl font-bold mb-4">Personalize Your Book</h2>
+            <p className="text-gray-600">Add your name and a special message</p>
+            {isGenerating && (
+              <div className="mt-4 inline-flex items-center gap-2 bg-blue-50 px-4 py-2 rounded-full">
+                <Loader className="w-4 h-4 text-blue-600 animate-spin" />
+                <span className="text-sm text-blue-600 font-semibold">Van Gogh preview generating in background...</span>
+              </div>
+            )}
+          </div>
+
+          <div className="max-w-2xl mx-auto bg-white rounded-3xl p-8 shadow-xl">
+            <div className="mb-8">
+              <label className="block text-lg font-semibold text-gray-700 mb-3">
+                Your Name (appears on cover)
+              </label>
+              <input
+                type="text"
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+                placeholder="Enter your name"
+                maxLength={30}
+                className="w-full px-6 py-4 text-2xl text-center border-2 border-amber-300 rounded-xl focus:border-amber-600 focus:outline-none font-bold"
+              />
+              <p className="text-sm text-gray-500 mt-2 text-center">Max 30 characters</p>
+            </div>
+
+            <div className="mb-8">
+              <label className="block text-lg font-semibold text-gray-700 mb-3">
+                Dedication (optional - appears inside cover)
+              </label>
+              <textarea
+                value={dedication}
+                onChange={(e) => setDedication(e.target.value)}
+                placeholder="For my amazing family who always believes in me..."
+                maxLength={300}
+                rows={5}
+                className="w-full px-6 py-4 border-2 border-amber-300 rounded-xl focus:border-amber-600 focus:outline-none resize-none"
+              />
+              <p className="text-sm text-gray-500 mt-2 text-right">{dedication.length}/300 characters</p>
+            </div>
+
+            <div className="mb-8">
+              <label className="block text-lg font-semibold text-gray-700 mb-3">
+                Cover Color
+              </label>
+              <div className="grid grid-cols-5 gap-4">
+                {colorOptions.map((color) => (
+                  <button
+                    key={color.name}
+                    onClick={() => setCoverColor(color.name)}
+                    className={`p-4 rounded-xl border-4 transition ${
+                      coverColor === color.name ? 'border-amber-600 scale-105' : 'border-gray-200'
+                    }`}>
+                    <div className={`w-full h-16 rounded-lg ${color.bg} mb-2`}></div>
+                    <p className="text-xs font-semibold">{color.label}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex justify-center">
+              <button
+                onClick={async () => {
+                  if (!customerName.trim()) {
+                    alert('Please enter your name');
+                    return;
+                  }
+                  
+                  await saveSession({
+                    customer_name: customerName,
+                    dedication: dedication,
+                    cover_color: coverColor
+                  });
+                  
+                  // Check if Van Gogh is done generating
+                  if (selectedVariations[6]) {
+                    // Already done! Go straight to preview
+                    setCurrentStep('preview');
+                  } else {
+                    // Still generating, show loading screen
+                    setCurrentStep('generating-preview');
+                  }
+                }}
+                disabled={!customerName.trim()}
+                className="px-12 py-4 bg-gradient-to-r from-amber-600 to-red-600 text-white rounded-full font-bold text-xl hover:shadow-xl transition disabled:opacity-50 disabled:cursor-not-allowed">
+                Continue to Preview →
+              </button>
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* GENERATING PREVIEW (VAN GOGH ONLY) */}
       {currentStep === 'generating-preview' && (
         <section className="max-w-3xl mx-auto px-4 py-20">
@@ -1643,13 +1772,31 @@ export default function BuildaBook() {
               <Loader className="w-full h-full text-amber-600 animate-spin" />
             </div>
 
-            <h2 className="text-4xl font-bold mb-4">Creating Your Preview...</h2>
+            <h2 className="text-4xl font-bold mb-4">Creating Your Van Gogh Preview...</h2>
             <p className="text-xl text-gray-600 mb-8">
               Generating your portrait in Van Gogh's style
             </p>
 
+            {/* PROGRESS BAR */}
+            <div className="mb-6">
+              <div className="bg-gray-200 rounded-full h-6 overflow-hidden">
+                <div
+                  className="bg-gradient-to-r from-amber-500 to-red-500 h-full transition-all duration-300 flex items-center justify-center text-white text-sm font-bold"
+                  style={{ width: `${generationProgress}%` }}>
+                  {generationProgress > 10 && `${Math.round(generationProgress)}%`}
+                </div>
+              </div>
+            </div>
+
+            {/* COUNTDOWN TIMER */}
+            <p className="text-lg text-gray-500 mb-4">
+              Estimated time remaining: <span className="font-bold text-amber-600">
+                {estimatedTimeLeft}s
+              </span>
+            </p>
+
             <div className="mt-8 text-sm text-gray-400">
-              <p>🎨 This will only take a few seconds</p>
+              <p>🎨 Your preview will be ready in about 30 seconds</p>
             </div>
           </div>
         </section>
@@ -2399,16 +2546,23 @@ export default function BuildaBook() {
                         <p className="text-2xl md:text-3xl font-bold">{selectedModalImage.artist?.name}</p>
                         <p className="text-lg md:text-xl text-gray-300 mt-2">{selectedModalImage.artist?.period}</p>
                       </div>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedArtistForChange(selectedModalImage.artistIdx);
-                          setShowArtistModal(true);
-                          setShowImageModal(false);
-                        }}
-                        className="w-full max-w-md mx-auto block bg-amber-600 hover:bg-amber-700 text-white py-4 px-8 rounded-full font-bold text-lg transition">
-                        Don't like this image? Click here to change it
-                      </button>
+                      {!isPreviewMode && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedArtistForChange(selectedModalImage.artistIdx);
+                            setShowArtistModal(true);
+                            setShowImageModal(false);
+                          }}
+                          className="w-full max-w-md mx-auto block bg-amber-600 hover:bg-amber-700 text-white py-4 px-8 rounded-full font-bold text-lg transition">
+                          Don't like this image? Click here to change it
+                        </button>
+                      )}
+                      {isPreviewMode && (
+                        <div className="text-center text-white">
+                          <p className="text-sm text-gray-400">Complete your purchase to customize all images</p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -2751,33 +2905,374 @@ export default function BuildaBook() {
                 <h2 className="text-4xl font-bold mb-2">
                   {currentSampleBook === 'male' ? '👨 Male' : currentSampleBook === 'female' ? '👩 Female' : '🐕 Pet'} Sample Book
                 </h2>
-                <p className="text-gray-600">See what your personalized book will look like</p>
+                <p className="text-gray-600">Browse the complete 32-page flipbook</p>
               </div>
               <button
-                onClick={() => setShowSampleBrowser(false)}
+                onClick={() => {
+                  setShowSampleBrowser(false);
+                  setCurrentSampleBookPage(0);
+                }}
                 className="p-3 hover:bg-gray-100 rounded-full transition">
                 <X className="w-6 h-6" />
               </button>
             </div>
 
-            <div className="grid grid-cols-3 md:grid-cols-4 gap-6 mb-8">
-              {artists.map((artist, idx) => (
-                <div key={idx} className="text-center">
-                  <div className="overflow-hidden rounded-xl shadow-lg mb-2 aspect-square bg-gray-100">
-                    <img
-                      src={`/samples/${currentSampleBook}/${artist.name.toLowerCase().replace(/ /g, '')}.png`}
-                      alt={artist.name}
-                      className="w-full h-full object-contain"
-                      onError={(e) => {
-                        // Fallback if image doesn't exist yet
-                        e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="400"%3E%3Crect fill="%23f3f4f6" width="400" height="400"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" font-family="Arial" font-size="18" fill="%239ca3af"%3ESample%3C/text%3E%3C/svg%3E';
-                      }}
-                    />
-                  </div>
-                  <p className="font-semibold text-sm">{artist.name}</p>
-                  <p className="text-xs text-gray-500">{artist.period}</p>
-                </div>
-              ))}
+            {/* COLOR SELECTOR FOR SAMPLE */}
+            <div className="max-w-md mx-auto mb-8 bg-gray-50 rounded-2xl p-6">
+              <label className="block text-lg font-semibold text-gray-700 mb-2 text-center">
+                Choose Cover Color
+              </label>
+              <div className="grid grid-cols-5 gap-3">
+                {colorOptions.map((color) => (
+                  <button
+                    key={color.name}
+                    onClick={() => setSampleBookColor(color.name)}
+                    className={`p-3 rounded-xl border-4 transition ${
+                      sampleBookColor === color.name ? 'border-amber-600 scale-105 shadow-lg' : 'border-gray-200'
+                    }`}>
+                    <div className={`w-full h-12 rounded-lg ${color.bg} mb-1`}></div>
+                    <p className="text-xs font-semibold">{color.label}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* SIMPLIFIED FLIPBOOK */}
+            <div className="mb-8">
+              {(() => {
+                const sampleBookPages = [];
+                
+                // FRONT COVER (NOT COUNTED AS PAGE)
+                sampleBookPages.push({
+                  type: 'front-cover',
+                  title: 'Front Cover',
+                  isNotPageNumbered: true,
+                  content: (
+                    <div className="w-full h-full bg-gray-100 flex items-center justify-center p-4">
+                      <div className="relative w-full h-full max-w-full" style={{ aspectRatio: '19/10.25' }}>
+                        <img 
+                          src={`/book-pages/${sampleBookColor}-cover.png`}
+                          alt="Sample Book Cover"
+                          className="w-full h-full object-contain"
+                        />
+                        <div 
+                          className="absolute text-white font-bold text-right"
+                          style={{
+                            top: '14%',
+                            right: '7.5%',
+                            width: '33%',
+                            fontSize: 'clamp(2.2rem, 4vw, 5.5rem)',
+                            lineHeight: '0.95',
+                            textShadow: '3px 3px 6px rgba(0,0,0,0.4)',
+                            fontFamily: 'serif',
+                            pointerEvents: 'none'
+                          }}>
+                          Your Name
+                        </div>
+                      </div>
+                    </div>
+                  )
+                });
+
+                // PAGE 1: Blank
+                sampleBookPages.push({
+                  type: 'blank',
+                  title: 'Blank Page',
+                  pageNumber: 1,
+                  content: (<div className="w-full h-full bg-white"></div>)
+                });
+
+                // PAGE 2: Dedication
+                sampleBookPages.push({
+                  type: 'dedication',
+                  title: 'Dedication',
+                  pageNumber: 2,
+                  content: (
+                    <div className="w-full h-full bg-gradient-to-br from-amber-50 to-orange-50 flex items-center justify-center p-4">
+                      <div className="relative w-full h-full max-w-full aspect-square">
+                        <img 
+                          src="/book-pages/frame.png"
+                          alt="Ornate Frame"
+                          className="absolute inset-0 w-full h-full object-contain"
+                        />
+                        <div className="absolute inset-0 flex items-center justify-center" style={{ padding: '18%' }}>
+                          <div className="text-center">
+                            <p className="text-sm md:text-base text-gray-700 italic font-serif">
+                              Sample dedication text goes here
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                });
+
+                // PAGE 3: Welcome
+                sampleBookPages.push({
+                  type: 'static',
+                  title: 'Welcome',
+                  pageNumber: 3,
+                  content: (
+                    <div className="w-full h-full bg-white flex items-center justify-center">
+                      <img src="/book-pages/welcome.png" alt="Welcome" className="w-full h-full object-contain" />
+                    </div>
+                  )
+                });
+
+                // PAGE 4: Table of Contents
+                sampleBookPages.push({
+                  type: 'toc',
+                  title: 'Table of Contents',
+                  pageNumber: 4,
+                  content: (
+                    <div className="w-full h-full bg-white flex items-center justify-center">
+                      <img src="/book-pages/toc.png" alt="TOC" className="w-full h-full object-contain" />
+                    </div>
+                  )
+                });
+
+                // PAGES 5-28: 12 Artists (AI portrait + Info page each)
+                const artistInfoPages = [
+                  'davinci-info.png', 'michelangelo-info.png', 'raphael-info.png',
+                  'rembrandt-info.png', 'vermeer-info.png', 'monet-info.png',
+                  'vangogh-info.png', 'munch-info.png', 'cubism-info.png',
+                  'surrealism-info.png', 'popart-info.png', 'americana-info.png'
+                ];
+
+                for (let i = 0; i < 12; i++) {
+                  const artist = artists[i];
+                  
+                  // AI Portrait page
+                  sampleBookPages.push({
+                    type: 'artwork',
+                    artistIdx: i,
+                    title: `${artist.name} Portrait`,
+                    pageNumber: 5 + (i * 2),
+                    content: (
+                      <div className="w-full h-full bg-gray-900 flex items-center justify-center p-4">
+                        <img
+                          src={`/samples/${currentSampleBook}/${artist.name.toLowerCase().replace(/ /g, '')}.png`}
+                          alt={artist.name}
+                          className="w-full h-full object-contain rounded-lg shadow-2xl"
+                          onError={(e) => {
+                            e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="400"%3E%3Crect fill="%23f3f4f6" width="400" height="400"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" font-family="Arial" font-size="18" fill="%239ca3af"%3ESample%3C/text%3E%3C/svg%3E';
+                          }}
+                        />
+                      </div>
+                    )
+                  });
+
+                  // Info page
+                  sampleBookPages.push({
+                    type: 'info',
+                    artistIdx: i,
+                    title: `${artist.name} Info`,
+                    pageNumber: 6 + (i * 2),
+                    content: (
+                      <div className="w-full h-full bg-white flex items-center justify-center">
+                        <img 
+                          src={`/book-pages/${artistInfoPages[i]}`}
+                          alt={`${artist.name} Info`}
+                          className="w-full h-full object-contain"
+                        />
+                      </div>
+                    )
+                  });
+                }
+
+                // PAGE 29: Timeline
+                sampleBookPages.push({
+                  type: 'timeline',
+                  title: 'Timeline of Great Masters',
+                  pageNumber: 29,
+                  content: (
+                    <div className="w-full h-full bg-white flex items-center justify-center">
+                      <img src="/book-pages/timeline.png" alt="Timeline" className="w-full h-full object-contain" />
+                    </div>
+                  )
+                });
+
+                // PAGE 30: Gallery Grid
+                sampleBookPages.push({
+                  type: 'gallery-grid',
+                  title: 'Complete Gallery',
+                  pageNumber: 30,
+                  content: (
+                    <div className="w-full h-full bg-gradient-to-br from-amber-50 to-orange-50 flex flex-col items-center justify-center p-8">
+                      <h3 className="text-3xl font-bold text-center mb-6 text-gray-800">Your 12 Masterpiece Portraits</h3>
+                      <div className="grid grid-cols-4 grid-rows-3 gap-4 w-full h-[calc(100%-4rem)]">
+                        {artists.map((artist, index) => (
+                          <div key={index} className="relative bg-white rounded-lg shadow-lg overflow-hidden border-2 border-amber-200">
+                            <img 
+                              src={`/samples/${currentSampleBook}/${artist.name.toLowerCase().replace(/ /g, '')}.png`}
+                              alt={artist.name}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="400"%3E%3Crect fill="%23f3f4f6" width="400" height="400"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" font-family="Arial" font-size="18" fill="%239ca3af"%3ESample%3C/text%3E%3C/svg%3E';
+                              }}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                });
+
+                // PAGE 31: Conclusion
+                sampleBookPages.push({
+                  type: 'conclusion',
+                  title: 'Conclusion',
+                  pageNumber: 31,
+                  content: (
+                    <div className="w-full h-full bg-white flex items-center justify-center">
+                      <img src="/book-pages/conclusion.png" alt="Conclusion" className="w-full h-full object-contain" />
+                    </div>
+                  )
+                });
+
+                // PAGE 32: QR Code
+                sampleBookPages.push({
+                  type: 'qr-code',
+                  title: 'QR Code',
+                  pageNumber: 32,
+                  content: (
+                    <div className="w-full h-full bg-white flex items-center justify-center">
+                      <img src="/book-pages/qr-code.png" alt="QR Code" className="w-full h-full object-contain" />
+                    </div>
+                  )
+                });
+
+                // BACK COVER (NOT COUNTED AS PAGE)
+                sampleBookPages.push({
+                  type: 'back-cover',
+                  title: 'Back Cover',
+                  isNotPageNumbered: true,
+                  content: (
+                    <div className="w-full h-full bg-gray-100 flex items-center justify-center p-4">
+                      <div className="relative w-full h-full max-w-full" style={{ aspectRatio: '19/10.25' }}>
+                        <img 
+                          src={`/book-pages/${sampleBookColor}-cover.png`}
+                          alt="Sample Back Cover"
+                          className="w-full h-full object-contain"
+                        />
+                        <div 
+                          className="absolute text-white font-bold text-right"
+                          style={{
+                            top: '14%',
+                            right: '7.5%',
+                            width: '33%',
+                            fontSize: 'clamp(2.2rem, 4vw, 5.5rem)',
+                            lineHeight: '0.95',
+                            textShadow: '3px 3px 6px rgba(0,0,0,0.4)',
+                            fontFamily: 'serif',
+                            pointerEvents: 'none'
+                          }}>
+                          Your Name
+                        </div>
+                      </div>
+                    </div>
+                  )
+                });
+
+                const totalPages = sampleBookPages.length;
+                const isFirstPage = currentSampleBookPage === 0;
+                const isLastPage = currentSampleBookPage === totalPages - 1;
+                
+                let leftPage = null;
+                let rightPage = null;
+
+                if (isFirstPage) {
+                  rightPage = sampleBookPages[0];
+                } else if (isLastPage) {
+                  leftPage = sampleBookPages[totalPages - 1];
+                } else {
+                  const isOddIndex = currentSampleBookPage % 2 === 1;
+                  if (isOddIndex) {
+                    leftPage = sampleBookPages[currentSampleBookPage];
+                    if (currentSampleBookPage + 1 < totalPages) {
+                      rightPage = sampleBookPages[currentSampleBookPage + 1];
+                    }
+                  } else {
+                    leftPage = sampleBookPages[currentSampleBookPage - 1];
+                    rightPage = sampleBookPages[currentSampleBookPage];
+                  }
+                }
+
+                return (
+                  <>
+                    <div className="bg-gray-100 rounded-3xl shadow-2xl p-8 mb-8">
+                      <div className="flex gap-4 justify-center items-stretch">
+                        {(currentSampleBookPage === 0 || currentSampleBookPage === totalPages - 1) ? (
+                          <div className="bg-white rounded-2xl shadow-xl overflow-hidden w-full max-w-4xl" style={{ aspectRatio: currentSampleBookPage === 0 ? '19/10.25' : '1/1' }}>
+                            {sampleBookPages[currentSampleBookPage].content}
+                          </div>
+                        ) : (
+                          <>
+                            {leftPage && (
+                              <div className="bg-white rounded-2xl shadow-xl overflow-hidden flex-1 max-w-md" style={{ aspectRatio: '1/1' }}>
+                                {leftPage.content}
+                              </div>
+                            )}
+                            {leftPage && rightPage && (
+                              <div className="w-1 bg-gradient-to-r from-gray-300 via-gray-400 to-gray-300 rounded-full"></div>
+                            )}
+                            {rightPage && (
+                              <div className="bg-white rounded-2xl shadow-xl overflow-hidden flex-1 max-w-md" style={{ aspectRatio: '1/1' }}>
+                                {rightPage.content}
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+
+                      <div className="text-center mt-6">
+                        {isFirstPage && <p className="text-xl font-bold text-gray-800">Front Cover</p>}
+                        {!isFirstPage && !isLastPage && leftPage && rightPage && (
+                          <p className="text-xl font-bold text-gray-800">{leftPage.title} • {rightPage.title}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex justify-between items-center px-4 mb-8">
+                      <button
+                        onClick={() => {
+                          if (currentSampleBookPage === 0) return;
+                          if (currentSampleBookPage <= 2) {
+                            setCurrentSampleBookPage(0);
+                          } else {
+                            setCurrentSampleBookPage(currentSampleBookPage - 2);
+                          }
+                        }}
+                        disabled={currentSampleBookPage === 0}
+                        className={`flex items-center gap-2 px-8 py-4 rounded-full font-bold text-lg transition ${
+                          currentSampleBookPage === 0
+                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                            : 'bg-amber-600 text-white hover:bg-amber-700 shadow-lg'
+                        }`}>
+                        <ChevronLeft className="w-6 h-6" /> Previous
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          if (currentSampleBookPage === totalPages - 1) return;
+                          if (currentSampleBookPage === 0) {
+                            setCurrentSampleBookPage(1);
+                          } else {
+                            setCurrentSampleBookPage(Math.min(totalPages - 1, currentSampleBookPage + 2));
+                          }
+                        }}
+                        disabled={currentSampleBookPage === totalPages - 1}
+                        className={`flex items-center gap-2 px-8 py-4 rounded-full font-bold text-lg transition ${
+                          currentSampleBookPage === totalPages - 1
+                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                            : 'bg-amber-600 text-white hover:bg-amber-700 shadow-lg'
+                        }`}>
+                        Next <ChevronRight className="w-6 h-6" />
+                      </button>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
 
             <div className="bg-gradient-to-r from-yellow-50 to-amber-50 border-4 border-amber-400 rounded-2xl p-6 mb-6">
