@@ -168,8 +168,8 @@ export default function BuildaBook() {
     { 
       name: 'Grant Wood', 
       period: 'American Regionalism',
-      malePrompt: 'American Regionalist portrait in two-figure composition featuring a stern-faced man and woman standing together in front of white clapboard house with Gothic window. Transform the male subject into the farmer figure in foreground - wearing dark jacket with white collarless shirt, round wire spectacles, holding three-pronged pitchfork vertically. The man rendered with resolute stoic posture and plain dignity, balding or short hair, gazing directly forward with serious expression. Keep the woman in background as the original composition shows - modest period dress with white collar, cameo brooch at neck, hair pulled back, standing slightly behind. Both rendered in crisp lines and smooth enamel texture with precise stylized features. Earthy browns, greens, and muted blues evoke rural Midwestern honesty. Folk art influence with clean linear forms, capturing American heartland endurance. The male subject should clearly become the pitchfork-holding farmer while woman remains faithful to original painting. Preserve original eyewear if present, do not add or remove glasses. Maintain original facial hair style exactly as it appears, do not add or remove facial hair.',
-      femalePrompt: 'American Regionalist portrait in two-figure composition featuring a man and woman standing together in front of white clapboard house with Gothic window. Transform the female subject into the woman figure - wearing modest period dress with white rickrack trim, white collar, cameo brooch at neck, hair pulled back in severe center part into a bun. The woman rendered with precise stylized features, strong Midwestern character with gentle restrained dignity, modest serious expression, standing slightly behind or beside. Keep the man as the original composition shows - stern farmer in dark jacket, holding three-pronged pitchfork, round spectacles, balding, gazing forward stoically. Both rendered in crisp lines and smooth enamel-like finish with precise folk art style. Warm earth tones with soft pastels, clean linear forms. The female subject should clearly become the modest woman in period dress while man remains faithful to original painting composition. Only one female figure present in composition. Preserve original eyewear if present, do not add or remove glasses. Maintain original hair length exactly as it appears.',
+      malePrompt: 'American Regionalist portrait of a stern-faced man in the style of Grant Wood. The man is the ONLY human figure in the composition, standing in front of a white clapboard house with a Gothic window. He wears a dark jacket with white collarless shirt and round wire spectacles, holding a three-pronged pitchfork vertically. Transform the uploaded male subject into this composition with his exact facial features, bone structure, and distinctive characteristics clearly recognizable. Render him with resolute stoic posture, plain dignity, gazing directly forward with serious expression. Use crisp lines and smooth enamel-like texture with precise stylized features. Earthy browns, greens, and muted blues evoke rural Midwestern setting. Folk art influence with clean linear forms. The subject face, eyes, nose, mouth, and overall likeness must be clearly identifiable as the uploaded person. Preserve original eyewear if present. Maintain original facial hair exactly as it appears.',
+      femalePrompt: 'American Regionalist portrait of a woman in the style of Grant Wood. The woman is the ONLY human figure in the composition, standing in front of a white clapboard house with a Gothic window. She wears a modest period dress with white rickrack trim, white collar, and cameo brooch at neck, hair pulled back in severe center part. Transform the uploaded female subject into this composition with her exact facial features, bone structure, and distinctive characteristics clearly recognizable. Render her with precise stylized features, strong Midwestern character with gentle restrained dignity, modest serious expression. Use crisp lines and smooth enamel-like finish with precise folk art style. Warm earth tones with soft pastels, clean linear forms. The subject face, eyes, nose, mouth, and overall likeness must be clearly identifiable as the uploaded person. Preserve original eyewear if present. Maintain original hair length exactly as it appears.',
       malePetPrompt: 'American Regionalist portrait in two-figure composition featuring a stern-faced male pet and a modest human woman standing together in front of a white clapboard house with a Gothic window. Transform the male pet subject into the farmer figure in the foreground—wearing a dark structured jacket with a white collarless shirt, round wire spectacles, and holding a three-pronged pitchfork vertically in one paw. The male pet is rendered with a resolute stoic posture and plain dignity, gazing directly forward with a serious expression. A modest human woman remains in the background (wearing a period dress with a white collar), standing slightly behind. Rendered in crisp lines and smooth enamel texture with precise stylized features, conveying rural Midwestern honesty.',
       femalePetPrompt: 'American Regionalist portrait in two-figure composition featuring a human male and a female pet standing together in front of a white clapboard house with a Gothic window. Transform the female pet subject into the woman figure—wearing a modest period dress with white rickrack trim, a white collar, and a cameo brooch at the neck. The female pet is rendered with precise stylized features, strong Midwestern character with gentle restrained dignity, a modest serious expression, standing slightly behind or beside the human male. The human male remains in the foreground (stern farmer in a dark jacket, holding a three-pronged pitchfork). Rendered in crisp lines and smooth enamel-like finish with a precise folk art style. The female pet should clearly become the modest woman pet in period dress.'
     }
@@ -352,7 +352,15 @@ export default function BuildaBook() {
                 setGeneratedImages(allImages);
                 setSelectedVariations(allSelected);
                 setIsPreviewMode(false);
-                setCurrentStep('preview');
+                
+                // Check if order already placed
+                if (checkData.fulfillment_status === 'order_placed' || checkData.lulu_print_job_id) {
+                  console.log('✅ Order already placed! Showing success page');
+                  setOrderNumber(checkData.lulu_print_job_id);
+                  setCurrentStep('success');
+                } else {
+                  setCurrentStep('preview');
+                }
               }
             }, 3000); // Check every 3 seconds
             
@@ -421,9 +429,15 @@ export default function BuildaBook() {
               setContactVerified(true);
               setCurrentStep('gender-select');
             } else if (Object.keys(parsedSelectedVariations).length === 12) {
-              // All done - go to preview
+              // All 12 images done - check if order placed
               setContactVerified(true);
-              setCurrentStep('preview');
+              if (session.fulfillment_status === 'order_placed' || session.lulu_print_job_id) {
+                console.log('✅ Order already placed! Showing success page');
+                setOrderNumber(session.lulu_print_job_id);
+                setCurrentStep('success');
+              } else {
+                setCurrentStep('preview');
+              }
             } else {
               // Gender selected but not all images generated
               setContactVerified(true);
@@ -771,7 +785,8 @@ export default function BuildaBook() {
         });
 
         setIsGenerating(false);
-        setCurrentStep('preview');
+        // Don't auto-transition! User must click "Continue" on dedication page
+        // setCurrentStep('preview'); // REMOVED - user controls flow
       } else {
         throw new Error('Failed to generate preview image');
       }
@@ -841,6 +856,13 @@ export default function BuildaBook() {
   };
 
   const regenerateArtist = async (artistIndex) => {
+    // Check shuffle limit (max 2 shuffles = 3 total images)
+    const currentHistory = imageHistory[artistIndex] || [];
+    if (currentHistory.length >= 3) {
+      alert('Maximum 3 variations reached for this artist. Please choose from the generated options.');
+      return;
+    }
+    
     setIsGenerating(true);
     const artist = artists[artistIndex];
     
@@ -854,7 +876,7 @@ export default function BuildaBook() {
     const artistPrompt = artist[promptKey];
 
     try {
-      console.log(`🎨 Generating single variation for ${artist.name} ($0.15)...`);
+      console.log(`🎨 Generating variation ${currentHistory.length + 1} of 3 for ${artist.name}...`);
       
       const response = await fetch(`${BACKEND_URL}/api/generate-variations`, {
         method: 'POST',
@@ -863,7 +885,7 @@ export default function BuildaBook() {
           image: uploadedImage,
           artistName: artist.name,
           artistPrompt: artistPrompt,
-          count: 1  // Only generate 1 image to save cost
+          count: 1  // Only generate 1 image
         })
       });
 
@@ -873,7 +895,6 @@ export default function BuildaBook() {
         const newImage = data.variations[0];
         
         // Add new image to history
-        const currentHistory = imageHistory[artistIndex] || [];
         const updatedHistory = [...currentHistory, newImage];
         
         setImageHistory({
@@ -893,7 +914,7 @@ export default function BuildaBook() {
           [artistIndex]: [newImage]
         });
         
-        console.log(`✅ New variation generated (Total: ${updatedHistory.length})`);
+        console.log(`✅ New variation generated (${updatedHistory.length} of 3)`);
       }
     } catch (error) {
       console.error('❌ Regeneration failed:', error);
@@ -1438,7 +1459,7 @@ export default function BuildaBook() {
                       { num: '1', icon: '📸', title: 'Upload', desc: 'Any photo - you, family, pets' },
                       { num: '2', icon: '🎨', title: 'Preview FREE', desc: 'Van Gogh in 30 seconds' },
                       { num: '3', icon: '✨', title: 'Personalize', desc: 'Name, dedication, colors' },
-                      { num: '4', icon: '📦', title: 'Delivered', desc: 'Ships FREE in 7-10 days' }
+                      { num: '4', icon: '📦', title: 'Delivered', desc: 'Ships in 7-10 days' }
                     ].map((step, idx) => (
                       <div key={idx} className="relative text-center group">
                         <div className="w-24 h-24 bg-gradient-to-br from-amber-600 to-red-600 text-white rounded-3xl flex items-center justify-center text-4xl font-black mx-auto mb-6 shadow-2xl relative z-10 group-hover:scale-125 group-hover:rotate-6 transition-all duration-500">
@@ -2778,24 +2799,55 @@ export default function BuildaBook() {
                           </div>
 
                           {/* ACTION BUTTONS */}
-                          <div className="grid grid-cols-2 gap-4">
-                            <button
-                              onClick={() => regenerateArtist(selectedArtistForChange)}
-                              disabled={isGenerating}
-                              className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white py-4 rounded-xl font-bold text-lg transition flex items-center justify-center gap-2">
-                              🔄 Shuffle ($0.15)
-                            </button>
+                          <div className="space-y-4">
+                            {/* Navigation Buttons */}
+                            {imageHistory[selectedArtistForChange]?.length > 1 && (
+                              <div className="flex gap-4">
+                                <button
+                                  onClick={() => navigateHistory(selectedArtistForChange, 'back')}
+                                  disabled={(currentHistoryIndex[selectedArtistForChange] || 0) === 0}
+                                  className="flex-1 bg-gray-600 hover:bg-gray-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white py-3 rounded-xl font-bold transition flex items-center justify-center gap-2">
+                                  <ChevronLeft className="w-5 h-5" />
+                                  Previous
+                                </button>
+                                <button
+                                  onClick={() => navigateHistory(selectedArtistForChange, 'forward')}
+                                  disabled={(currentHistoryIndex[selectedArtistForChange] || 0) >= (imageHistory[selectedArtistForChange]?.length - 1 || 0)}
+                                  className="flex-1 bg-gray-600 hover:bg-gray-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white py-3 rounded-xl font-bold transition flex items-center justify-center gap-2">
+                                  Next
+                                  <ChevronRight className="w-5 h-5" />
+                                </button>
+                              </div>
+                            )}
                             
-                            <button
-                              onClick={() => selectCurrentImage(selectedArtistForChange)}
-                              className="bg-green-600 hover:bg-green-700 text-white py-4 rounded-xl font-bold text-lg transition flex items-center justify-center gap-2">
-                              <Check className="w-5 h-5" />
-                              Use This Image
-                            </button>
+                            {/* Shuffle and Select Buttons */}
+                            <div className="grid grid-cols-2 gap-4">
+                              <button
+                                onClick={() => regenerateArtist(selectedArtistForChange)}
+                                disabled={isGenerating || (imageHistory[selectedArtistForChange]?.length >= 3)}
+                                className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white py-4 rounded-xl font-bold text-lg transition flex items-center justify-center gap-2">
+                                🔄 Shuffle
+                                {imageHistory[selectedArtistForChange]?.length >= 3 && (
+                                  <span className="text-xs">(Max)</span>
+                                )}
+                              </button>
+                              
+                              <button
+                                onClick={() => selectCurrentImage(selectedArtistForChange)}
+                                className="bg-green-600 hover:bg-green-700 text-white py-4 rounded-xl font-bold text-lg transition flex items-center justify-center gap-2">
+                                <Check className="w-5 h-5" />
+                                Use This Image
+                              </button>
+                            </div>
                           </div>
                           
                           <p className="text-center text-sm text-gray-500 mt-4">
-                            {(imageHistory[selectedArtistForChange]?.length || 0)} variation{(imageHistory[selectedArtistForChange]?.length || 0) !== 1 ? 's' : ''} generated
+                            Variation {(currentHistoryIndex[selectedArtistForChange] || 0) + 1} of {imageHistory[selectedArtistForChange]?.length || 1}
+                            {(imageHistory[selectedArtistForChange]?.length || 0) < 3 && (
+                              <span className="text-purple-600 font-semibold ml-2">
+                                ({3 - (imageHistory[selectedArtistForChange]?.length || 0)} shuffle{(3 - (imageHistory[selectedArtistForChange]?.length || 0)) !== 1 ? 's' : ''} remaining)
+                              </span>
+                            )}
                           </p>
                         </>
                       )}
@@ -2873,22 +2925,27 @@ export default function BuildaBook() {
                   
                   {/* Show different button based on payment status */}
                   {paymentStatus === 'paid' ? (
-                    <button
-                      onClick={handleConfirmOrder}
-                      disabled={isSubmittingOrder}
-                      className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white py-4 rounded-full font-bold text-xl shadow-xl transition flex items-center justify-center gap-2">
-                      {isSubmittingOrder ? (
-                        <>
-                          <Loader className="w-5 h-5 animate-spin" />
-                          Placing Order...
-                        </>
-                      ) : (
-                        <>
-                          <Check className="w-5 h-5" />
-                          Confirm & Place Order
-                        </>
-                      )}
-                    </button>
+                    <>
+                      <button
+                        onClick={handleConfirmOrder}
+                        disabled={isSubmittingOrder}
+                        className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white py-4 rounded-full font-bold text-xl shadow-xl transition flex items-center justify-center gap-2">
+                        {isSubmittingOrder ? (
+                          <>
+                            <Loader className="w-5 h-5 animate-spin" />
+                            Placing Order...
+                          </>
+                        ) : (
+                          <>
+                            <Check className="w-5 h-5" />
+                            Confirm & Place Order
+                          </>
+                        )}
+                      </button>
+                      <p className="text-center text-sm text-amber-700 mt-3 font-semibold">
+                        ⚠️ Please don't refresh the page while placing your order
+                      </p>
+                    </>
                   ) : (
                     <button
                       onClick={handleCheckout}
