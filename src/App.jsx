@@ -1152,26 +1152,145 @@ export default function BuildaBook() {
               {/* RIGHT: 3D Book Mockup */}
               <div className="space-y-8 order-1 lg:order-2">
                 <div className="relative group" style={{perspective: '1000px'}}>
-                  <div className="relative transform transition-all duration-700 group-hover:scale-110" style={{transformStyle: 'preserve-3d', transform: 'rotateY(-15deg) rotateX(5deg)'}}>
-                    <div className="absolute -inset-6 bg-gradient-to-r from-amber-400 via-red-400 to-pink-400 rounded-3xl blur-3xl opacity-40 group-hover:opacity-60 transition-opacity animate-pulse"></div>
+                  {/* 3D ANIMATED BOOK THAT OPENS ON HOVER */}
+                  <div className="relative group cursor-pointer perspective-container">
+                    <style>{`
+                      .perspective-container {
+                        perspective: 2000px;
+                      }
+                      
+                      .book-3d {
+                        transform-style: preserve-3d;
+                        transition: all 0.8s cubic-bezier(0.4, 0.0, 0.2, 1);
+                      }
+                      
+                      .book-cover-left {
+                        transform-origin: left center;
+                        transform-style: preserve-3d;
+                        transition: transform 0.8s cubic-bezier(0.4, 0.0, 0.2, 1);
+                      }
+                      
+                      .group:hover .book-cover-left {
+                        transform: rotateY(-140deg);
+                      }
+                      
+                      .book-page-left {
+                        transform-origin: right center;
+                        backface-visibility: hidden;
+                      }
+                      
+                      .book-page-right {
+                        transform-origin: left center;
+                        backface-visibility: hidden;
+                      }
+                      
+                      .book-shadow {
+                        transition: all 0.8s ease;
+                      }
+                      
+                      .group:hover .book-shadow {
+                        opacity: 0.3;
+                        transform: translateX(-30px) scale(1.2);
+                      }
+                    `}</style>
+
+                    {/* Glow effect behind book */}
+                    <div className="absolute -inset-8 bg-gradient-to-r from-amber-400 via-red-400 to-pink-400 rounded-3xl blur-3xl opacity-30 group-hover:opacity-50 transition-opacity duration-700"></div>
                     
-                    <div className="relative bg-white rounded-2xl shadow-2xl overflow-hidden border-8 border-white">
-                      <div className="aspect-[3/4] bg-gradient-to-br from-purple-600 via-pink-600 to-red-600 p-12 flex flex-col items-center justify-center text-white">
-                        <div className="text-7xl mb-6">🎨</div>
-                        <h3 className="font-black text-5xl text-center mb-3 drop-shadow-2xl">Your Name</h3>
-                        <div className="w-24 h-1 bg-white/50 rounded-full mb-4"></div>
-                        <p className="text-xl font-light italic opacity-90">painted by</p>
-                        <p className="font-black text-4xl mt-2 drop-shadow-lg">12 Masters</p>
+                    {/* Shadow under book */}
+                    <div className="book-shadow absolute inset-x-0 bottom-0 h-8 bg-black/20 blur-xl transform -translate-y-4"></div>
+
+                    {/* The actual 3D book */}
+                    <div className="book-3d relative">
+                      {/* BOOK SPINE/BACK (right side when closed) */}
+                      <div className="absolute right-0 top-0 w-12 h-full bg-gradient-to-r from-amber-800 to-amber-600 rounded-r-lg" style={{transform: 'translateZ(-10px)'}}></div>
+                      
+                      {/* LEFT COVER (opens on hover) */}
+                      <div className="book-cover-left absolute inset-0 bg-white rounded-l-2xl shadow-2xl border-4 border-amber-100 overflow-hidden" style={{zIndex: 10}}>
+                        <div className="w-full h-full bg-gradient-to-br from-amber-600 via-orange-600 to-red-600 p-8 flex flex-col items-center justify-center text-white relative">
+                          {/* Front cover design */}
+                          <div className="absolute inset-0 opacity-10" style={{
+                            backgroundImage: 'radial-gradient(circle at 20% 50%, transparent 0%, rgba(0,0,0,0.3) 100%)'
+                          }}></div>
+                          <div className="relative z-10 text-center">
+                            <div className="text-6xl mb-4 drop-shadow-2xl">🎨</div>
+                            <h3 className="font-black text-4xl mb-2 drop-shadow-xl">Your Name</h3>
+                            <div className="w-20 h-1 bg-white/50 rounded-full mx-auto mb-3"></div>
+                            <p className="text-lg font-light italic opacity-90">painted by</p>
+                            <p className="font-black text-3xl mt-1 drop-shadow-lg">12 Masters</p>
+                          </div>
+                          {/* Book spine shadow effect */}
+                          <div className="absolute right-0 top-0 w-8 h-full bg-gradient-to-l from-black/30 to-transparent"></div>
+                        </div>
+                        
+                        {/* Back of front cover (white) */}
+                        <div className="absolute inset-0 bg-white" style={{transform: 'rotateY(180deg) translateZ(1px)', backfaceVisibility: 'hidden'}}></div>
                       </div>
+
+                      {/* RIGHT PAGE SPREAD - Shows when book opens */}
+                      <div className="relative bg-white rounded-2xl shadow-2xl overflow-hidden border-4 border-white" style={{aspectRatio: '2/1'}}>
+                        <div className="absolute inset-0 flex">
+                          {/* LEFT PAGE - Van Gogh AI Portrait */}
+                          <div className="book-page-left w-1/2 bg-gray-900 flex items-center justify-center p-6 border-r border-gray-200">
+                            <div className="w-full h-full rounded-lg overflow-hidden shadow-xl">
+                              <img 
+                                src="/samples/male/vincentvangogh.png"
+                                alt="Van Gogh Style Sample"
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="400"%3E%3Crect fill="%23374151" width="400" height="400"/%3E%3Ctext x="50%25" y="45%25" dominant-baseline="middle" text-anchor="middle" font-family="Arial" font-size="24" fill="%23fff" font-weight="bold"%3EVan Gogh%3C/text%3E%3Ctext x="50%25" y="55%25" dominant-baseline="middle" text-anchor="middle" font-family="Arial" font-size="16" fill="%23d1d5db"%3ESample Portrait%3C/text%3E%3C/svg%3E';
+                                }}
+                              />
+                            </div>
+                          </div>
+
+                          {/* CENTER BINDING */}
+                          <div className="absolute left-1/2 top-0 w-1 h-full bg-gradient-to-b from-gray-300 via-gray-400 to-gray-300 transform -translate-x-1/2" style={{boxShadow: '0 0 10px rgba(0,0,0,0.3)'}}></div>
+
+                          {/* RIGHT PAGE - Van Gogh Info */}
+                          <div className="book-page-right w-1/2 bg-white flex items-center justify-center p-6">
+                            <div className="w-full h-full">
+                              <img 
+                                src="/book-pages/vangogh-info.png"
+                                alt="Van Gogh Info"
+                                className="w-full h-full object-contain"
+                                onError={(e) => {
+                                  e.target.parentElement.innerHTML = `
+                                    <div class="flex flex-col items-center justify-center h-full text-gray-800 p-4">
+                                      <h3 class="text-2xl font-bold mb-2">Vincent van Gogh</h3>
+                                      <p class="text-sm text-gray-600 mb-3">1853-1890 • Post-Impressionism</p>
+                                      <div class="text-xs text-gray-700 leading-relaxed text-center">
+                                        <p class="mb-2">Master of bold colors and emotional brushwork</p>
+                                        <p class="mb-2">Famous works: Starry Night, Sunflowers</p>
+                                        <p>Revolutionary style that shaped modern art</p>
+                                      </div>
+                                    </div>
+                                  `;
+                                }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Page edges effect */}
+                      <div className="absolute right-0 top-1 w-2 h-[calc(100%-8px)] bg-gradient-to-r from-gray-100 via-white to-gray-100 rounded-r" style={{transform: 'translateZ(-5px)'}}></div>
+                      <div className="absolute right-0 top-2 w-2 h-[calc(100%-16px)] bg-gradient-to-r from-gray-200 via-white to-gray-200 rounded-r" style={{transform: 'translateZ(-10px)'}}></div>
                     </div>
 
-                    <div className="absolute top-0 right-0 w-3 h-full bg-gradient-to-l from-gray-400 to-transparent opacity-60"></div>
-                    
-                    <div className="absolute -top-4 -right-4 bg-gradient-to-br from-yellow-400 to-orange-500 text-white px-4 py-2 rounded-xl font-black text-sm shadow-2xl animate-bounce">
+                    {/* Badges */}
+                    <div className="absolute -top-4 -right-4 bg-gradient-to-br from-yellow-400 to-orange-500 text-white px-4 py-2 rounded-xl font-black text-sm shadow-2xl animate-bounce z-20">
                       32 Pages ✨
                     </div>
-                    <div className="absolute -bottom-4 -left-4 bg-gradient-to-br from-green-400 to-emerald-600 text-white px-4 py-2 rounded-xl font-black text-sm shadow-2xl">
+                    <div className="absolute -bottom-4 -left-4 bg-gradient-to-br from-green-400 to-emerald-600 text-white px-4 py-2 rounded-xl font-black text-sm shadow-2xl z-20">
                       Premium
+                    </div>
+
+                    {/* Hover instruction tooltip */}
+                    <div className="absolute -bottom-12 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap">
+                      <div className="bg-gray-900 text-white px-4 py-2 rounded-full text-xs font-semibold shadow-xl">
+                        👆 Hover to open book!
+                      </div>
                     </div>
                   </div>
                 </div>
