@@ -301,7 +301,15 @@ export default function BuildaBook() {
             setSelectedVariations(allSelected);
             setIsPreviewMode(false); // All real images now!
             console.log('🎨 Set isPreviewMode to FALSE - showing all real images');
-            setCurrentStep('preview');
+            
+            // Check if order already placed - show success page instead of preview
+            if (sessionData.fulfillment_status === 'order_placed' || sessionData.lulu_print_job_id) {
+              console.log('✅ Order already placed! Showing success page');
+              setOrderNumber(sessionData.lulu_print_job_id);
+              setCurrentStep('success');
+            } else {
+              setCurrentStep('preview');
+            }
           } else {
             // Images still generating via webhook - show loading
             setCurrentStep('generating-final');
@@ -2419,10 +2427,11 @@ export default function BuildaBook() {
                   </div>
 
                   <div className="max-w-6xl mx-auto">
-                    <div className="bg-gray-100 rounded-3xl shadow-2xl p-8 mb-8">
+                    <div key={currentBookPage} className="bg-gray-100 rounded-3xl shadow-2xl p-8 mb-8">
                       <div className="flex gap-4 justify-center items-stretch">
                         {(currentBookPage === 0 || currentBookPage === totalPages - 1) ? (
                           <div 
+                            key={`single-${currentBookPage}`}
                             className="bg-white rounded-2xl shadow-xl overflow-hidden w-full max-w-4xl">
                             {bookPages[currentBookPage].content}
                           </div>
@@ -2430,6 +2439,7 @@ export default function BuildaBook() {
                           <>
                             {leftPage && (
                               <div 
+                                key={`left-${currentBookPage}`}
                                 className="bg-white rounded-2xl shadow-xl overflow-hidden flex-1 max-w-md"
                                 style={{ aspectRatio: '1/1' }}>
                                 {leftPage.content}
@@ -2440,6 +2450,7 @@ export default function BuildaBook() {
                             )}
                             {rightPage && (
                               <div 
+                                key={`right-${currentBookPage}`}
                                 className="bg-white rounded-2xl shadow-xl overflow-hidden flex-1 max-w-md"
                                 style={{ aspectRatio: '1/1' }}>
                                 {rightPage.content}
@@ -2528,18 +2539,18 @@ export default function BuildaBook() {
                 {/* IMAGE MODAL WITH "CHANGE THIS IMAGE" BUTTON */}
                 {showImageModal && selectedModalImage && (
                   <div
-                    className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
+                    className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4 overflow-y-auto"
                     onClick={() => setShowImageModal(false)}>
                     <button
                       onClick={() => setShowImageModal(false)}
                       className="absolute top-4 right-4 bg-white text-gray-900 p-3 rounded-full hover:bg-gray-200 transition z-10">
                       <X className="w-6 h-6" />
                     </button>
-                    <div className="max-w-5xl w-full">
+                    <div className="max-w-4xl w-full my-8">
                       <img
                         src={selectedModalImage.url}
                         alt={selectedModalImage.artist?.name}
-                        className="w-full h-auto rounded-lg shadow-2xl mb-6"
+                        className="w-full max-h-[60vh] object-contain rounded-lg shadow-2xl mb-6"
                         onClick={(e) => e.stopPropagation()}
                       />
                       <div className="text-center text-white mb-6">
@@ -2559,8 +2570,8 @@ export default function BuildaBook() {
                         </button>
                       )}
                       {isPreviewMode && (
-                        <div className="text-center text-white">
-                          <p className="text-sm text-gray-400">Complete your purchase to customize all images</p>
+                        <div className="text-center text-white bg-amber-900/30 py-3 px-6 rounded-full inline-block">
+                          <p className="text-sm text-amber-100">Complete your purchase to customize all images</p>
                         </div>
                       )}
                     </div>
@@ -2893,6 +2904,348 @@ export default function BuildaBook() {
               Create Another Book
             </button>
           </div>
+
+          {/* ADD FLIPBOOK PREVIEW ON SUCCESS PAGE */}
+          {Object.keys(selectedVariations).length === 12 && (
+            <div className="mt-16">
+              <div className="text-center mb-8">
+                <h2 className="text-4xl font-bold mb-4">📖 Your Completed Book</h2>
+                <p className="text-gray-600">Browse through your personalized masterpiece</p>
+              </div>
+
+              {/* Reuse the same flipbook logic from preview page */}
+              {(() => {
+                const bookPages = [];
+
+                // FRONT COVER
+                bookPages.push({
+                  type: 'front-cover',
+                  title: 'Front Cover',
+                  isNotPageNumbered: true,
+                  content: (
+                    <div className="w-full h-full bg-gray-100 flex items-center justify-center p-4">
+                      <div className="relative w-full h-full max-w-full" style={{ aspectRatio: '19/10.25' }}>
+                        <img 
+                          src={`/book-pages/${coverColor}-cover.png`}
+                          alt="Book Cover"
+                          className="w-full h-full object-contain"
+                        />
+                        <div 
+                          className="absolute text-white font-bold text-right"
+                          style={{
+                            top: '14%',
+                            right: '7.5%',
+                            width: '33%',
+                            fontSize: 'clamp(2.2rem, 4vw, 5.5rem)',
+                            lineHeight: '0.95',
+                            textShadow: '3px 3px 6px rgba(0,0,0,0.4)',
+                            fontFamily: 'serif',
+                            pointerEvents: 'none'
+                          }}>
+                          {customerName || 'Your Name'}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                });
+
+                // PAGE 1: Blank
+                bookPages.push({
+                  type: 'blank',
+                  title: 'Blank Page',
+                  pageNumber: 1,
+                  content: (<div className="w-full h-full bg-white"></div>)
+                });
+
+                // PAGE 2: Dedication
+                bookPages.push({
+                  type: 'dedication',
+                  title: 'Dedication',
+                  pageNumber: 2,
+                  content: (
+                    <div className="w-full h-full bg-gradient-to-br from-amber-50 to-orange-50 flex items-center justify-center p-4">
+                      <div className="relative w-full h-full max-w-full aspect-square">
+                        <img 
+                          src="/book-pages/frame.png"
+                          alt="Ornate Frame"
+                          className="absolute inset-0 w-full h-full object-contain"
+                        />
+                        <div className="absolute inset-0 flex items-center justify-center" style={{ padding: '18%' }}>
+                          <div className="text-center">
+                            <p className="text-sm md:text-base text-gray-700 italic font-serif whitespace-pre-wrap">
+                              {dedication || 'Your dedication here'}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                });
+
+                // Add all interior pages (welcome, TOC, artists, timeline, gallery, conclusion, QR)
+                const interiorPages = [
+                  { type: 'static', title: 'Welcome', pageNumber: 3, img: 'welcome.png' },
+                  { type: 'toc', title: 'Table of Contents', pageNumber: 4, img: 'toc.png' }
+                ];
+
+                interiorPages.forEach(page => {
+                  bookPages.push({
+                    ...page,
+                    content: (
+                      <div className="w-full h-full bg-white flex items-center justify-center">
+                        <img src={`/book-pages/${page.img}`} alt={page.title} className="w-full h-full object-contain" />
+                      </div>
+                    )
+                  });
+                });
+
+                // 12 Artists with portraits + info pages
+                const artistInfoPages = [
+                  'davinci-info.png', 'michelangelo-info.png', 'raphael-info.png',
+                  'rembrandt-info.png', 'vermeer-info.png', 'monet-info.png',
+                  'vangogh-info.png', 'munch-info.png', 'cubism-info.png',
+                  'surrealism-info.png', 'popart-info.png', 'americana-info.png'
+                ];
+
+                for (let i = 0; i < 12; i++) {
+                  const artist = artists[i];
+                  const aiImage = selectedVariations[i];
+
+                  // AI Portrait
+                  bookPages.push({
+                    type: 'artwork',
+                    artistIdx: i,
+                    title: `${artist.name} Portrait`,
+                    pageNumber: 5 + (i * 2),
+                    content: (
+                      <div className="w-full h-full bg-gray-900 flex items-center justify-center p-4">
+                        <img
+                          src={aiImage?.url}
+                          alt={artist.name}
+                          className="w-full h-full object-contain rounded-lg shadow-2xl"
+                        />
+                      </div>
+                    )
+                  });
+
+                  // Info page
+                  bookPages.push({
+                    type: 'info',
+                    title: `${artist.name} Info`,
+                    pageNumber: 6 + (i * 2),
+                    content: (
+                      <div className="w-full h-full bg-white flex items-center justify-center">
+                        <img 
+                          src={`/book-pages/${artistInfoPages[i]}`}
+                          alt={`${artist.name} Info`}
+                          className="w-full h-full object-contain"
+                        />
+                      </div>
+                    )
+                  });
+                }
+
+                // Timeline, Gallery, Conclusion, QR
+                bookPages.push({
+                  type: 'timeline',
+                  title: 'Timeline',
+                  pageNumber: 29,
+                  content: (
+                    <div className="w-full h-full bg-white flex items-center justify-center">
+                      <img src="/book-pages/timeline.png" alt="Timeline" className="w-full h-full object-contain" />
+                    </div>
+                  )
+                });
+
+                bookPages.push({
+                  type: 'gallery-grid',
+                  title: 'Gallery',
+                  pageNumber: 30,
+                  content: (
+                    <div className="w-full h-full bg-gradient-to-br from-amber-50 to-orange-50 flex flex-col items-center justify-center p-8">
+                      <h3 className="text-3xl font-bold text-center mb-6 text-gray-800">Your 12 Masterpiece Portraits</h3>
+                      <div className="grid grid-cols-4 grid-rows-3 gap-4 w-full h-[calc(100%-4rem)]">
+                        {artists.map((artist, index) => {
+                          const img = selectedVariations[index];
+                          return (
+                            <div key={index} className="relative bg-white rounded-lg shadow-lg overflow-hidden border-2 border-amber-200">
+                              <img 
+                                src={img?.url}
+                                alt={artist.name}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )
+                });
+
+                bookPages.push({
+                  type: 'conclusion',
+                  title: 'Conclusion',
+                  pageNumber: 31,
+                  content: (
+                    <div className="w-full h-full bg-white flex items-center justify-center">
+                      <img src="/book-pages/conclusion.png" alt="Conclusion" className="w-full h-full object-contain" />
+                    </div>
+                  )
+                });
+
+                bookPages.push({
+                  type: 'qr-code',
+                  title: 'QR Code',
+                  pageNumber: 32,
+                  content: (
+                    <div className="w-full h-full bg-white flex items-center justify-center">
+                      <img src="/book-pages/qr-code.png" alt="QR Code" className="w-full h-full object-contain" />
+                    </div>
+                  )
+                });
+
+                // BACK COVER
+                bookPages.push({
+                  type: 'back-cover',
+                  title: 'Back Cover',
+                  isNotPageNumbered: true,
+                  content: (
+                    <div className="w-full h-full bg-gray-100 flex items-center justify-center p-4">
+                      <div className="relative w-full h-full max-w-full" style={{ aspectRatio: '19/10.25' }}>
+                        <img 
+                          src={`/book-pages/${coverColor}-cover.png`}
+                          alt="Back Cover"
+                          className="w-full h-full object-contain"
+                        />
+                        <div 
+                          className="absolute text-white font-bold text-right"
+                          style={{
+                            top: '14%',
+                            right: '7.5%',
+                            width: '33%',
+                            fontSize: 'clamp(2.2rem, 4vw, 5.5rem)',
+                            lineHeight: '0.95',
+                            textShadow: '3px 3px 6px rgba(0,0,0,0.4)',
+                            fontFamily: 'serif',
+                            pointerEvents: 'none'
+                          }}>
+                          {customerName || 'Your Name'}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                });
+
+                const totalPages = bookPages.length;
+                const isFirstPage = currentBookPage === 0;
+                const isLastPage = currentBookPage === totalPages - 1;
+
+                let leftPage = null;
+                let rightPage = null;
+
+                if (isFirstPage) {
+                  rightPage = bookPages[0];
+                } else if (isLastPage) {
+                  leftPage = bookPages[totalPages - 1];
+                } else {
+                  const isOddIndex = currentBookPage % 2 === 1;
+                  if (isOddIndex) {
+                    leftPage = bookPages[currentBookPage];
+                    if (currentBookPage + 1 < totalPages) {
+                      rightPage = bookPages[currentBookPage + 1];
+                    }
+                  } else {
+                    leftPage = bookPages[currentBookPage - 1];
+                    rightPage = bookPages[currentBookPage];
+                  }
+                }
+
+                return (
+                  <>
+                    <div key={currentBookPage} className="bg-gray-100 rounded-3xl shadow-2xl p-8 mb-8">
+                      <div className="flex gap-4 justify-center items-stretch">
+                        {(currentBookPage === 0 || currentBookPage === totalPages - 1) ? (
+                          <div 
+                            key={`single-${currentBookPage}`}
+                            className="bg-white rounded-2xl shadow-xl overflow-hidden w-full max-w-4xl">
+                            {bookPages[currentBookPage].content}
+                          </div>
+                        ) : (
+                          <>
+                            {leftPage && (
+                              <div 
+                                key={`left-${currentBookPage}`}
+                                className="bg-white rounded-2xl shadow-xl overflow-hidden flex-1 max-w-md"
+                                style={{ aspectRatio: '1/1' }}>
+                                {leftPage.content}
+                              </div>
+                            )}
+                            {leftPage && rightPage && (
+                              <div className="w-1 bg-gradient-to-r from-gray-300 via-gray-400 to-gray-300 rounded-full"></div>
+                            )}
+                            {rightPage && (
+                              <div 
+                                key={`right-${currentBookPage}`}
+                                className="bg-white rounded-2xl shadow-xl overflow-hidden flex-1 max-w-md"
+                                style={{ aspectRatio: '1/1' }}>
+                                {rightPage.content}
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+
+                      <div className="text-center mt-6">
+                        {isFirstPage && <p className="text-xl font-bold text-gray-800">Front Cover</p>}
+                        {isLastPage && <p className="text-xl font-bold text-gray-800">Back Cover</p>}
+                        {!isFirstPage && !isLastPage && leftPage && rightPage && (
+                          <p className="text-xl font-bold text-gray-800">{leftPage.title} • {rightPage.title}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex justify-between items-center px-4">
+                      <button
+                        onClick={() => {
+                          if (currentBookPage === 0) return;
+                          if (currentBookPage <= 2) {
+                            setCurrentBookPage(0);
+                          } else {
+                            setCurrentBookPage(currentBookPage - 2);
+                          }
+                        }}
+                        disabled={currentBookPage === 0}
+                        className={`flex items-center gap-2 px-8 py-4 rounded-full font-bold text-lg transition ${
+                          currentBookPage === 0
+                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                            : 'bg-amber-600 text-white hover:bg-amber-700 shadow-lg'
+                        }`}>
+                        <ChevronLeft className="w-6 h-6" /> Previous
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          if (currentBookPage === totalPages - 1) return;
+                          if (currentBookPage === 0) {
+                            setCurrentBookPage(1);
+                          } else {
+                            setCurrentBookPage(Math.min(totalPages - 1, currentBookPage + 2));
+                          }
+                        }}
+                        disabled={currentBookPage === totalPages - 1}
+                        className={`flex items-center gap-2 px-8 py-4 rounded-full font-bold text-lg transition ${
+                          currentBookPage === totalPages - 1
+                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                            : 'bg-amber-600 text-white hover:bg-amber-700 shadow-lg'
+                        }`}>
+                        Next <ChevronRight className="w-6 h-6" />
+                      </button>
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+          )}
         </section>
       )}
 
@@ -2967,7 +3320,7 @@ export default function BuildaBook() {
                             fontFamily: 'serif',
                             pointerEvents: 'none'
                           }}>
-                          Your Name
+                          Name
                         </div>
                       </div>
                     </div>
@@ -2998,7 +3351,7 @@ export default function BuildaBook() {
                         <div className="absolute inset-0 flex items-center justify-center" style={{ padding: '18%' }}>
                           <div className="text-center">
                             <p className="text-sm md:text-base text-gray-700 italic font-serif">
-                              Sample dedication text goes here
+                              Dedication text goes here
                             </p>
                           </div>
                         </div>
@@ -3167,7 +3520,7 @@ export default function BuildaBook() {
                             fontFamily: 'serif',
                             pointerEvents: 'none'
                           }}>
-                          Your Name
+                          Name
                         </div>
                       </div>
                     </div>
@@ -3200,16 +3553,16 @@ export default function BuildaBook() {
 
                 return (
                   <>
-                    <div className="bg-gray-100 rounded-3xl shadow-2xl p-8 mb-8">
+                    <div key={currentSampleBookPage} className="bg-gray-100 rounded-3xl shadow-2xl p-8 mb-8">
                       <div className="flex gap-4 justify-center items-stretch">
                         {(currentSampleBookPage === 0 || currentSampleBookPage === totalPages - 1) ? (
-                          <div className="bg-white rounded-2xl shadow-xl overflow-hidden w-full max-w-4xl" style={{ aspectRatio: currentSampleBookPage === 0 ? '19/10.25' : '1/1' }}>
+                          <div key={`single-${currentSampleBookPage}`} className="bg-white rounded-2xl shadow-xl overflow-hidden w-full max-w-4xl" style={{ aspectRatio: currentSampleBookPage === 0 ? '19/10.25' : '1/1' }}>
                             {sampleBookPages[currentSampleBookPage].content}
                           </div>
                         ) : (
                           <>
                             {leftPage && (
-                              <div className="bg-white rounded-2xl shadow-xl overflow-hidden flex-1 max-w-md" style={{ aspectRatio: '1/1' }}>
+                              <div key={`left-${currentSampleBookPage}`} className="bg-white rounded-2xl shadow-xl overflow-hidden flex-1 max-w-md" style={{ aspectRatio: '1/1' }}>
                                 {leftPage.content}
                               </div>
                             )}
@@ -3217,7 +3570,7 @@ export default function BuildaBook() {
                               <div className="w-1 bg-gradient-to-r from-gray-300 via-gray-400 to-gray-300 rounded-full"></div>
                             )}
                             {rightPage && (
-                              <div className="bg-white rounded-2xl shadow-xl overflow-hidden flex-1 max-w-md" style={{ aspectRatio: '1/1' }}>
+                              <div key={`right-${currentSampleBookPage}`} className="bg-white rounded-2xl shadow-xl overflow-hidden flex-1 max-w-md" style={{ aspectRatio: '1/1' }}>
                                 {rightPage.content}
                               </div>
                             )}
