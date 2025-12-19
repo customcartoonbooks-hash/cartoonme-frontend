@@ -488,6 +488,17 @@ export default function BuildaBook() {
     }
   }, [currentStep, isGenerating]);
 
+  // Auto-transition from generating-preview to preview when Van Gogh is done
+  useEffect(() => {
+    if (currentStep === 'generating-preview' && !isGenerating && selectedVariations[6]) {
+      console.log('✅ Van Gogh complete! Auto-transitioning to preview...');
+      setGenerationProgress(100);
+      setTimeout(() => {
+        setCurrentStep('preview');
+      }, 500); // Brief delay to show 100% completion
+    }
+  }, [currentStep, isGenerating, selectedVariations]);
+
   const saveSession = async (updates) => {
     if (!sessionId) {
       console.log('⚠️ No session ID, skipping save');
@@ -723,20 +734,24 @@ export default function BuildaBook() {
   };
 
   const selectGenderAndStartBatchGeneration = async (gender) => {
+    console.log('🎯 Gender selected:', gender);
     setSelectedGender(gender);
     await saveSession({ 
       selected_gender: gender,
       cover_color: coverColor
     });
     
-    // Go to dedication page
+    console.log('✅ Moving to dedication page...');
+    // Go to dedication page IMMEDIATELY
     setCurrentStep('dedication');
     
     // Start Van Gogh generation in BACKGROUND
+    console.log('🎨 Starting background Van Gogh generation...');
     setIsGenerating(true);
     generatePreviewImage(gender).catch(error => {
-      console.error('Background generation error:', error);
+      console.error('❌ Background generation error:', error);
       setIsGenerating(false);
+      // Still stay on dedication page even if generation fails
     });
   };
 
