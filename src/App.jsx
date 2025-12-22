@@ -476,9 +476,11 @@ export default function BuildaBook() {
       const interval = setInterval(() => {
         setGenerationProgress(prev => {
           if (prev >= 95) return prev; // Stop at 95% until actually done
-          return prev + 1;
+          const newProgress = prev + 1;
+          // Update time proportionally (30 seconds for 95%)
+          setEstimatedTimeLeft(Math.round(30 * (1 - newProgress / 95)));
+          return newProgress;
         });
-        setEstimatedTimeLeft(prev => Math.max(0, prev - 1));
       }, 300); // Update every 300ms (30 seconds / 100 = 300ms per %)
       
       return () => clearInterval(interval);
