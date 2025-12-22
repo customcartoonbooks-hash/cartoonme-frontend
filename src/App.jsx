@@ -302,12 +302,17 @@ export default function BuildaBook() {
             setIsPreviewMode(false); // All real images now!
             console.log('🎨 Set isPreviewMode to FALSE - showing all real images');
             
+            // DEBUG: Check fulfillment status
+            console.log('🔍 DEBUG fulfillment_status:', sessionData.fulfillment_status);
+            console.log('🔍 DEBUG lulu_print_job_id:', sessionData.lulu_print_job_id);
+            
             // Check if order already placed - show success page instead of preview
             if (sessionData.fulfillment_status === 'order_placed' || sessionData.lulu_print_job_id) {
               console.log('✅ Order already placed! Showing success page');
               setOrderNumber(sessionData.lulu_print_job_id);
               setCurrentStep('success');
             } else {
+              console.log('⏸️  Order not placed yet - showing preview for customer review');
               setCurrentStep('preview');
             }
           } else {
