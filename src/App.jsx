@@ -175,6 +175,22 @@ export default function BuildaBook() {
     }
   ];
 
+  // Map artist names to simplified filenames for samples
+  const artistFilenames = {
+    'Leonardo da Vinci': 'davinci',
+    'Michelangelo': 'michelangelo',
+    'Raphael': 'raphael',
+    'Rembrandt': 'rembrandt',
+    'Johannes Vermeer': 'vermeer',
+    'Claude Monet': 'monet',
+    'Vincent van Gogh': 'vangogh',
+    'Edvard Munch': 'munch',
+    'Pablo Picasso': 'picasso',
+    'Salvador Dalí': 'dali',
+    'Andy Warhol': 'warhol',
+    'Grant Wood': 'grantwood'
+  };
+
   // Sample images for preview mode (to be replaced with user's actual generated image for Van Gogh)
   const sampleImages = {
     male: {
@@ -3636,7 +3652,7 @@ export default function BuildaBook() {
                     content: (
                       <div className="w-full h-full bg-gray-900 flex items-center justify-center p-4">
                         <img
-                          src={`/samples/${currentSampleBook}/${artist.name.toLowerCase().replace(/ /g, '')}.jpg`}
+                          src={`/samples/${currentSampleBook}/${artistFilenames[artist.name]}.jpg`}
                           alt={artist.name}
                           className="w-full h-full object-contain rounded-lg shadow-2xl"
                           onError={(e) => {
@@ -3689,7 +3705,7 @@ export default function BuildaBook() {
                         {artists.map((artist, index) => (
                           <div key={index} className="relative bg-white rounded-lg shadow-lg overflow-hidden border-2 border-amber-200">
                             <img 
-                              src={`/samples/${currentSampleBook}/${artist.name.toLowerCase().replace(/ /g, '')}.jpg`}
+                              src={`/samples/${currentSampleBook}/${artistFilenames[artist.name]}.jpg`}
                               alt={artist.name}
                               className="w-full h-full object-cover"
                               onError={(e) => {
