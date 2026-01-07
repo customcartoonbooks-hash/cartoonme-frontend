@@ -3524,7 +3524,7 @@ export default function BuildaBook() {
             </div>
 
             {/* SIMPLIFIED FLIPBOOK - MOBILE OPTIMIZED */}
-            <div className="mb-4 md:mb-8"
+            <div className="mb-4 md:mb-8">
               {(() => {
                 const sampleBookPages = [];
                 
