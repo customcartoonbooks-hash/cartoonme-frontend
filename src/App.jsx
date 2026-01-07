@@ -178,46 +178,60 @@ export default function BuildaBook() {
   // Sample images for preview mode (to be replaced with user's actual generated image for Van Gogh)
   const sampleImages = {
     male: {
-      0: '/samples/male/davinci.png',
-      1: '/samples/male/michelangelo.png',
-      2: '/samples/male/raphael.png',
-      3: '/samples/male/rembrandt.png',
-      4: '/samples/male/vermeer.png',
-      5: '/samples/male/monet.png',
-      6: '/samples/male/vangogh.png', // Will be replaced with real image
-      7: '/samples/male/munch.png',
-      8: '/samples/male/picasso.png',
-      9: '/samples/male/dali.png',
-      10: '/samples/male/warhol.png',
-      11: '/samples/male/wood.png'
+      0: '/samples/male/davinci.jpg',
+      1: '/samples/male/michelangelo.jpg',
+      2: '/samples/male/raphael.jpg',
+      3: '/samples/male/rembrandt.jpg',
+      4: '/samples/male/vermeer.jpg',
+      5: '/samples/male/monet.jpg',
+      6: '/samples/male/vangogh.jpg', // Will be replaced with real image
+      7: '/samples/male/munch.jpg',
+      8: '/samples/male/picasso.jpg',
+      9: '/samples/male/dali.jpg',
+      10: '/samples/male/warhol.jpg',
+      11: '/samples/male/grantwood.jpg'
     },
     female: {
-      0: '/samples/female/davinci.png',
-      1: '/samples/female/michelangelo.png',
-      2: '/samples/female/raphael.png',
-      3: '/samples/female/rembrandt.png',
-      4: '/samples/female/vermeer.png',
-      5: '/samples/female/monet.png',
-      6: '/samples/female/vangogh.png',
-      7: '/samples/female/munch.png',
-      8: '/samples/female/picasso.png',
-      9: '/samples/female/dali.png',
-      10: '/samples/female/warhol.png',
-      11: '/samples/female/wood.png'
+      0: '/samples/female/davinci.jpg',
+      1: '/samples/female/michelangelo.jpg',
+      2: '/samples/female/raphael.jpg',
+      3: '/samples/female/rembrandt.jpg',
+      4: '/samples/female/vermeer.jpg',
+      5: '/samples/female/monet.jpg',
+      6: '/samples/female/vangogh.jpg',
+      7: '/samples/female/munch.jpg',
+      8: '/samples/female/picasso.jpg',
+      9: '/samples/female/dali.jpg',
+      10: '/samples/female/warhol.jpg',
+      11: '/samples/female/grantwood.jpg'
     },
     pet: {
-      0: '/samples/pet/davinci.png',
-      1: '/samples/pet/michelangelo.png',
-      2: '/samples/pet/raphael.png',
-      3: '/samples/pet/rembrandt.png',
-      4: '/samples/pet/vermeer.png',
-      5: '/samples/pet/monet.png',
-      6: '/samples/pet/vangogh.png',
-      7: '/samples/pet/munch.png',
-      8: '/samples/pet/picasso.png',
-      9: '/samples/pet/dali.png',
-      10: '/samples/pet/warhol.png',
-      11: '/samples/pet/wood.png'
+      0: '/samples/pet/davinci.jpg',
+      1: '/samples/pet/michelangelo.jpg',
+      2: '/samples/pet/raphael.jpg',
+      3: '/samples/pet/rembrandt.jpg',
+      4: '/samples/pet/vermeer.jpg',
+      5: '/samples/pet/monet.jpg',
+      6: '/samples/pet/vangogh.jpg',
+      7: '/samples/pet/munch.jpg',
+      8: '/samples/pet/picasso.jpg',
+      9: '/samples/pet/dali.jpg',
+      10: '/samples/pet/warhol.jpg',
+      11: '/samples/pet/grantwood.jpg'
+    },
+    'pet-female': {
+      0: '/samples/pet-female/davinci.jpg',
+      1: '/samples/pet-female/michelangelo.jpg',
+      2: '/samples/pet-female/raphael.jpg',
+      3: '/samples/pet-female/rembrandt.jpg',
+      4: '/samples/pet-female/vermeer.jpg',
+      5: '/samples/pet-female/monet.jpg',
+      6: '/samples/pet-female/vangogh.jpg',
+      7: '/samples/pet-female/munch.jpg',
+      8: '/samples/pet-female/picasso.jpg',
+      9: '/samples/pet-female/dali.jpg',
+      10: '/samples/pet-female/warhol.jpg',
+      11: '/samples/pet-female/grantwood.jpg'
     }
   };
 
@@ -240,9 +254,16 @@ export default function BuildaBook() {
           setSessionId(ourSessionId);
           console.log('✅ Our session ID:', ourSessionId);
           
-          // Load session data
-          const sessionResponse = await fetch(`${BACKEND_URL}/api/session/${ourSessionId}`);
+          // Load session data (with cache-busting to ensure fresh data)
+          const cacheBust = Date.now();
+          const sessionResponse = await fetch(`${BACKEND_URL}/api/session/${ourSessionId}?t=${cacheBust}`);
           const sessionData = await sessionResponse.json();
+          
+          console.log('📊 Fresh session data loaded:', {
+            fulfillment_status: sessionData.fulfillment_status,
+            lulu_print_job_id: sessionData.lulu_print_job_id,
+            payment_status: sessionData.payment_status
+          });
           
           // Set all session data
           setSelectedGender(sessionData.selected_gender);
@@ -422,6 +443,11 @@ export default function BuildaBook() {
             setSelectedVariations(parsedSelectedVariations);
             setUploadedImage(session.uploaded_image);
             
+            // DEBUG: Show what we have
+            console.log('🔍 DEBUG selected_variations count:', Object.keys(parsedSelectedVariations).length);
+            console.log('🔍 DEBUG selected_variations keys:', Object.keys(parsedSelectedVariations));
+            console.log('🔍 DEBUG generated_images count:', Object.keys(parsedGeneratedImages).length);
+            
             // Check if contact is verified
             const isVerified = session.verification_email || session.verification_phone;
             
@@ -436,11 +462,18 @@ export default function BuildaBook() {
             } else if (Object.keys(parsedSelectedVariations).length === 12) {
               // All 12 images done - check if order placed
               setContactVerified(true);
+              
+              // DEBUG: Check what we actually have
+              console.log('🔍 DEBUG (clean URL) fulfillment_status:', session.fulfillment_status);
+              console.log('🔍 DEBUG (clean URL) lulu_print_job_id:', session.lulu_print_job_id);
+              console.log('🔍 DEBUG (clean URL) payment_status:', session.payment_status);
+              
               if (session.fulfillment_status === 'order_placed' || session.lulu_print_job_id) {
                 console.log('✅ Order already placed! Showing success page');
                 setOrderNumber(session.lulu_print_job_id);
                 setCurrentStep('success');
               } else {
+                console.log('⏸️  Order not yet placed - showing preview for review');
                 setCurrentStep('preview');
               }
             } else {
@@ -1277,7 +1310,7 @@ export default function BuildaBook() {
                           <div className="book-page-left w-1/2 bg-gray-900 flex items-center justify-center p-6 border-r border-gray-200">
                             <div className="w-full h-full rounded-lg overflow-hidden shadow-xl">
                               <img 
-                                src="/samples/male/vincentvangogh.png"
+                                src="/samples/male/vangogh.jpg"
                                 alt="Van Gogh Style Sample"
                                 className="w-full h-full object-cover"
                                 onError={(e) => {
@@ -2191,8 +2224,9 @@ export default function BuildaBook() {
                 const isRealImage = isPreviewMode ? idx === 6 : true;
                 
                 // Map gender to sample image category
-                const sampleCategory = selectedGender?.toLowerCase().includes('pet') ? 'pet' : 
-                                      selectedGender?.toLowerCase() === 'female' ? 'female' : 'male';
+                const sampleCategory = selectedGender === 'FemalePet' ? 'pet-female' :
+                                      selectedGender === 'MalePet' ? 'pet' :
+                                      selectedGender === 'Female' ? 'female' : 'male';
                 
                 const imageData = isRealImage && selectedVariations[idx] 
                   ? selectedVariations[idx]
@@ -3602,7 +3636,7 @@ export default function BuildaBook() {
                     content: (
                       <div className="w-full h-full bg-gray-900 flex items-center justify-center p-4">
                         <img
-                          src={`/samples/${currentSampleBook}/${artist.name.toLowerCase().replace(/ /g, '')}.png`}
+                          src={`/samples/${currentSampleBook}/${artist.name.toLowerCase().replace(/ /g, '')}.jpg`}
                           alt={artist.name}
                           className="w-full h-full object-contain rounded-lg shadow-2xl"
                           onError={(e) => {
@@ -3655,7 +3689,7 @@ export default function BuildaBook() {
                         {artists.map((artist, index) => (
                           <div key={index} className="relative bg-white rounded-lg shadow-lg overflow-hidden border-2 border-amber-200">
                             <img 
-                              src={`/samples/${currentSampleBook}/${artist.name.toLowerCase().replace(/ /g, '')}.png`}
+                              src={`/samples/${currentSampleBook}/${artist.name.toLowerCase().replace(/ /g, '')}.jpg`}
                               alt={artist.name}
                               className="w-full h-full object-cover"
                               onError={(e) => {
