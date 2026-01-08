@@ -1389,17 +1389,29 @@ export default function BuildaBook() {
                   </div>
                 </div>
 
-                {/* VIDEO PLACEHOLDER */}
-                <div className="relative bg-gradient-to-br from-gray-900 to-black rounded-2xl overflow-hidden shadow-2xl group cursor-pointer transform hover:scale-105 transition-transform">
-                  <div className="aspect-video flex items-center justify-center relative">
-                    <div className="absolute inset-0 bg-gradient-to-br from-purple-900/30 to-pink-900/30"></div>
-                    <div className="relative z-10 text-center space-y-4">
-                      <div className="w-20 h-20 mx-auto bg-white/20 backdrop-blur-lg rounded-full flex items-center justify-center group-hover:bg-white/30 group-hover:scale-110 transition-all shadow-2xl">
-                        <div className="w-0 h-0 border-l-[24px] border-l-white border-y-[14px] border-y-transparent ml-1"></div>
-                      </div>
-                      <p className="text-white font-bold text-lg">Watch Your Transformation</p>
-                      <p className="text-gray-300 text-sm">30-second preview • Coming soon</p>
+                {/* VIDEO SECTION - Optimized for large file */}
+                <div className="relative bg-gradient-to-br from-gray-900 to-black rounded-2xl overflow-hidden shadow-2xl">
+                  <video 
+                    className="w-full aspect-video object-cover"
+                    controls
+                    poster="/video-thumbnail.jpg"
+                    preload="none"
+                    playsInline
+                    loading="lazy"
+                  >
+                    <source src="/transformation-video.mp4" type="video/mp4" />
+                    Your browser does not support the video tag.
+                  </video>
+                  
+                  {/* Play button overlay - shows before video loads */}
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div className="w-20 h-20 bg-white/20 backdrop-blur-lg rounded-full flex items-center justify-center">
+                      <div className="w-0 h-0 border-l-[24px] border-l-white border-y-[14px] border-y-transparent ml-1"></div>
                     </div>
+                  </div>
+                  
+                  <div className="absolute bottom-4 left-4 right-4 text-white">
+                    <p className="text-lg font-bold drop-shadow-lg">See What It's All About</p>
                   </div>
                 </div>
               </div>
