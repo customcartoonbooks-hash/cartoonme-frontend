@@ -1297,12 +1297,12 @@ export default function BuildaBook() {
                       {/* BOOK SPINE/BACK (left side when closed) */}
                       <div className="absolute left-0 top-0 w-12 h-full bg-gradient-to-r from-amber-800 to-amber-600 rounded-l-lg" style={{transform: 'translateZ(-10px)'}}></div>
                       
-                      {/* LEFT COVER (opens on hover) - Contains front and back */}
-                      <div className="book-cover-left absolute inset-0 rounded-l-2xl shadow-2xl overflow-hidden" style={{zIndex: 10, aspectRatio: '1/1', transformStyle: 'preserve-3d'}}>
+                      {/* LEFT COVER (opens on hover) */}
+                      <div className="book-cover-left absolute inset-0 rounded-l-2xl shadow-2xl overflow-hidden" style={{zIndex: 10, aspectRatio: '1/1'}}>
                         
                         {/* FRONT of cover (green gradient with text) */}
-                        <div className="absolute inset-0 bg-gradient-to-br from-green-700 via-green-600 to-amber-700 p-8 flex flex-col items-center justify-center text-white border-4 border-amber-100 rounded-l-2xl" style={{backfaceVisibility: 'hidden'}}>
-                          {/* Front cover design - MATCHES ACTUAL BOOK */}
+                        <div className="absolute inset-0 bg-gradient-to-br from-green-700 via-green-600 to-amber-700 p-8 flex flex-col items-center justify-center text-white border-4 border-amber-100 rounded-l-2xl">
+                          {/* Front cover design */}
                           <div className="absolute inset-0 opacity-10" style={{
                             backgroundImage: 'radial-gradient(circle at 20% 50%, transparent 0%, rgba(0,0,0,0.3) 100%)'
                           }}></div>
@@ -1325,27 +1325,32 @@ export default function BuildaBook() {
                           {/* Book spine shadow effect on LEFT */}
                           <div className="absolute left-0 top-0 w-8 h-full bg-gradient-to-r from-black/30 to-transparent"></div>
                         </div>
-                        
-                        {/* BACK of cover (AI image - shows when flipped) */}
-                        <div className="absolute inset-0 bg-gray-900 flex items-center justify-center p-8 border-4 border-amber-100 rounded-l-2xl" style={{transform: 'rotateY(180deg)', backfaceVisibility: 'hidden'}}>
-                          <div className="w-full h-full rounded-xl overflow-hidden shadow-2xl">
-                            <img 
-                              src="/samples/male/vangogh.jpg"
-                              alt="Van Gogh Style Sample"
-                              className="w-full h-full object-cover"
-                              onError={(e) => {
-                                e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="400"%3E%3Crect fill="%23374151" width="400" height="400"/%3E%3Ctext x="50%25" y="45%25" dominant-baseline="middle" text-anchor="middle" font-family="Arial" font-size="24" fill="%23fff" font-weight="bold"%3EVan Gogh%3C/text%3E%3Ctext x="50%25" y="55%25" dominant-baseline="middle" text-anchor="middle" font-family="Arial" font-size="16" fill="%23d1d5db"%3ESample Portrait%3C/text%3E%3C/svg%3E';
-                              }}
-                            />
-                          </div>
-                        </div>
                       </div>
 
-                      {/* RIGHT PAGE SPREAD - Only shows Van Gogh info page */}
-                      <div className="relative bg-white rounded-2xl shadow-2xl overflow-hidden border-4 border-white" style={{aspectRatio: '1/1'}}>
-                        <div className="absolute inset-0 flex items-center justify-center p-6">
-                          {/* Van Gogh Info Page */}
-                          <div className="w-full h-full">
+                      {/* RIGHT: 2-PAGE SPREAD when opened - Van Gogh portrait (left) + Info (right) */}
+                      <div className="relative bg-white rounded-2xl shadow-2xl overflow-hidden border-4 border-white" style={{aspectRatio: '2/1'}}>
+                        <div className="absolute inset-0 flex">
+                          
+                          {/* LEFT PAGE - Van Gogh AI Portrait */}
+                          <div className="w-1/2 bg-gray-900 flex items-center justify-center p-6 border-r border-gray-300">
+                            <div className="w-full h-full rounded-lg overflow-hidden shadow-xl">
+                              <img 
+                                src="/samples/male/vangogh.jpg"
+                                alt="Van Gogh Style Sample"
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="400"%3E%3Crect fill="%23374151" width="400" height="400"/%3E%3Ctext x="50%25" y="45%25" dominant-baseline="middle" text-anchor="middle" font-family="Arial" font-size="24" fill="%23fff" font-weight="bold"%3EVan Gogh%3C/text%3E%3Ctext x="50%25" y="55%25" dominant-baseline="middle" text-anchor="middle" font-family="Arial" font-size="16" fill="%23d1d5db"%3ESample Portrait%3C/text%3E%3C/svg%3E';
+                                }}
+                              />
+                            </div>
+                          </div>
+
+                          {/* CENTER BINDING */}
+                          <div className="absolute left-1/2 top-0 w-1 h-full bg-gradient-to-b from-gray-300 via-gray-400 to-gray-300 transform -translate-x-1/2" style={{boxShadow: '0 0 10px rgba(0,0,0,0.3)'}}></div>
+
+                          {/* RIGHT PAGE - Van Gogh Info */}
+                          <div className="w-1/2 bg-white flex items-center justify-center p-6">
+                            <div className="w-full h-full">
                             <img 
                               src="/book-pages/vangogh-info.png"
                               alt="Van Gogh Info"
@@ -1364,6 +1369,7 @@ export default function BuildaBook() {
                                 `;
                               }}
                             />
+                            </div>
                           </div>
                         </div>
                       </div>
