@@ -1392,6 +1392,7 @@ export default function BuildaBook() {
                 {/* VIDEO SECTION - Optimized for large file */}
                 <div className="relative bg-gradient-to-br from-gray-900 to-black rounded-2xl overflow-hidden shadow-2xl">
                   <video 
+                    id="transformation-video"
                     className="w-full aspect-video object-cover"
                     controls
                     poster="/video-thumbnail.jpg"
@@ -1413,9 +1414,17 @@ export default function BuildaBook() {
                     Your browser does not support the video tag.
                   </video>
                   
-                  {/* Play button overlay - shows before video loads, hides when playing */}
-                  <div className="play-button-overlay absolute inset-0 flex items-center justify-center pointer-events-none transition-opacity duration-300">
-                    <div className="w-20 h-20 bg-white/20 backdrop-blur-lg rounded-full flex items-center justify-center">
+                  {/* Play button overlay - CLICKABLE, starts video */}
+                  <div 
+                    className="play-button-overlay absolute inset-0 flex items-center justify-center transition-opacity duration-300 cursor-pointer"
+                    onClick={() => {
+                      const video = document.getElementById('transformation-video');
+                      if (video) {
+                        video.play();
+                      }
+                    }}
+                  >
+                    <div className="w-20 h-20 bg-white/20 backdrop-blur-lg rounded-full flex items-center justify-center hover:bg-white/30 hover:scale-110 transition-all">
                       <div className="w-0 h-0 border-l-[24px] border-l-white border-y-[14px] border-y-transparent ml-1"></div>
                     </div>
                   </div>
