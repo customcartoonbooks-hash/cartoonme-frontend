@@ -1272,6 +1272,7 @@ export default function BuildaBook() {
                         transform-origin: left center;
                         transform-style: preserve-3d;
                         transition: transform 0.8s cubic-bezier(0.4, 0.0, 0.2, 1) 0.2s;
+                        backface-visibility: hidden;
                       }
                       
                       .group:hover .book-page-1 {
@@ -1327,7 +1328,21 @@ export default function BuildaBook() {
 
                       {/* PAGE 1 (AI image - flips on top of cover) */}
                       <div className="book-page-1 absolute inset-0 rounded-l-2xl shadow-xl overflow-hidden" style={{zIndex: 20, aspectRatio: '1/1'}}>
-                        <div className="absolute inset-0 bg-gray-900 flex items-center justify-center p-8 border-4 border-white rounded-l-2xl">
+                        {/* FRONT: AI Image */}
+                        <div className="absolute inset-0 bg-gray-900 flex items-center justify-center p-8 border-4 border-white rounded-l-2xl" style={{backfaceVisibility: 'hidden'}}>
+                          <div className="w-full h-full rounded-xl overflow-hidden shadow-2xl">
+                            <img 
+                              src="/samples/male/vangogh.jpg"
+                              alt="Van Gogh Style Sample"
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="400"%3E%3Crect fill="%23374151" width="400" height="400"/%3E%3Ctext x="50%25" y="45%25" dominant-baseline="middle" text-anchor="middle" font-family="Arial" font-size="24" fill="%23fff" font-weight="bold"%3EVan Gogh%3C/text%3E%3Ctext x="50%25" y="55%25" dominant-baseline="middle" text-anchor="middle" font-family="Arial" font-size="16" fill="%23d1d5db"%3ESample Portrait%3C/text%3E%3C/svg%3E';
+                              }}
+                            />
+                          </div>
+                        </div>
+                        {/* BACK: SAME AI Image (shown when flipped) */}
+                        <div className="absolute inset-0 bg-gray-900 flex items-center justify-center p-8 border-4 border-white rounded-l-2xl" style={{transform: 'rotateY(180deg) scaleX(-1)', backfaceVisibility: 'hidden'}}>
                           <div className="w-full h-full rounded-xl overflow-hidden shadow-2xl">
                             <img 
                               src="/samples/male/vangogh.jpg"
