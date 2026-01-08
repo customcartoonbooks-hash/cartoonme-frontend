@@ -1398,19 +1398,29 @@ export default function BuildaBook() {
                     preload="none"
                     playsInline
                     loading="lazy"
+                    onPlay={(e) => {
+                      // Hide play button when video starts
+                      const playButton = e.target.parentElement.querySelector('.play-button-overlay');
+                      if (playButton) playButton.style.opacity = '0';
+                    }}
+                    onPause={(e) => {
+                      // Show play button when paused
+                      const playButton = e.target.parentElement.querySelector('.play-button-overlay');
+                      if (playButton) playButton.style.opacity = '1';
+                    }}
                   >
                     <source src="/transformation-video.mp4" type="video/mp4" />
                     Your browser does not support the video tag.
                   </video>
                   
-                  {/* Play button overlay - shows before video loads */}
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  {/* Play button overlay - shows before video loads, hides when playing */}
+                  <div className="play-button-overlay absolute inset-0 flex items-center justify-center pointer-events-none transition-opacity duration-300">
                     <div className="w-20 h-20 bg-white/20 backdrop-blur-lg rounded-full flex items-center justify-center">
                       <div className="w-0 h-0 border-l-[24px] border-l-white border-y-[14px] border-y-transparent ml-1"></div>
                     </div>
                   </div>
                   
-                  <div className="absolute bottom-4 left-4 right-4 text-white">
+                  <div className="absolute bottom-4 left-4 right-4 text-white pointer-events-none">
                     <p className="text-lg font-bold drop-shadow-lg">See What It's All About</p>
                   </div>
                 </div>
