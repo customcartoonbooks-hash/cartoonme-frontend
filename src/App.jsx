@@ -1276,7 +1276,7 @@ export default function BuildaBook() {
                       }
                       
                       .group:hover .book-page-1 {
-                        transform: rotateY(-165deg);
+                        transform: rotateY(-180deg);
                       }
                       
                       .book-shadow {
