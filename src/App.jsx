@@ -1299,43 +1299,40 @@ export default function BuildaBook() {
                       
                       {/* LEFT COVER (opens on hover) */}
                       <div className="book-cover-left absolute inset-0 bg-white rounded-l-2xl shadow-2xl border-4 border-amber-100 overflow-hidden" style={{zIndex: 10, aspectRatio: '1/1'}}>
-                        <div className="w-full h-full bg-gradient-to-br from-amber-600 via-orange-600 to-red-600 p-8 flex flex-col items-center justify-center text-white relative">
+                        <div className="w-full h-full bg-gradient-to-br from-green-700 via-green-600 to-amber-700 p-8 flex flex-col items-center justify-center text-white relative">
                           {/* Front cover design - MATCHES ACTUAL BOOK */}
                           <div className="absolute inset-0 opacity-10" style={{
                             backgroundImage: 'radial-gradient(circle at 20% 50%, transparent 0%, rgba(0,0,0,0.3) 100%)'
                           }}></div>
-                          <div className="relative z-10 text-center">
-                            <div className="text-6xl mb-4 drop-shadow-2xl">🎨</div>
-                            <h3 className="font-black text-4xl mb-2 drop-shadow-xl">Your Name</h3>
-                            <div className="w-20 h-1 bg-white/50 rounded-full mx-auto mb-3"></div>
-                            <p className="text-lg font-light italic opacity-90">painted by</p>
-                            <p className="font-black text-2xl mt-1 drop-shadow-lg">Great Masters</p>
-                            <p className="font-black text-2xl drop-shadow-lg">of Art</p>
+                          <div className="relative z-10 text-center space-y-3">
+                            <h3 className="font-serif text-5xl font-normal drop-shadow-xl tracking-wide" style={{fontFamily: 'Georgia, serif'}}>
+                              Your Name
+                            </h3>
+                            <div className="space-y-1">
+                              <p className="font-serif text-3xl font-light italic opacity-95" style={{fontFamily: 'Georgia, serif'}}>
+                                painted by
+                              </p>
+                              <p className="font-serif text-3xl font-light lowercase drop-shadow-lg" style={{fontFamily: 'Georgia, serif'}}>
+                                great masters
+                              </p>
+                              <p className="font-serif text-3xl font-light lowercase drop-shadow-lg" style={{fontFamily: 'Georgia, serif'}}>
+                                of art
+                              </p>
+                            </div>
                           </div>
                           {/* Book spine shadow effect on LEFT */}
                           <div className="absolute left-0 top-0 w-8 h-full bg-gradient-to-r from-black/30 to-transparent"></div>
                         </div>
                         
-                        {/* Back of front cover (white inside cover) */}
-                        <div className="absolute inset-0 bg-white" style={{transform: 'rotateY(180deg) translateZ(1px)', backfaceVisibility: 'hidden'}}></div>
+                        {/* Back of front cover (orange inside cover) */}
+                        <div className="absolute inset-0 bg-gradient-to-br from-amber-600 via-orange-600 to-red-600" style={{transform: 'rotateY(180deg) translateZ(1px)', backfaceVisibility: 'hidden'}}></div>
                       </div>
 
-                      {/* RIGHT PAGE SPREAD - SQUARE SHAPE, shows inside cover on left when opened */}
+                      {/* RIGHT PAGE SPREAD - SQUARE SHAPE, Van Gogh AI on left, info on right */}
                       <div className="relative bg-white rounded-2xl shadow-2xl overflow-hidden border-4 border-white" style={{aspectRatio: '1/1'}}>
                         <div className="absolute inset-0 flex">
-                          {/* LEFT PAGE - White inside cover (shown when book opens) */}
-                          <div className="book-page-left w-1/2 bg-white flex items-center justify-center p-6 border-r border-gray-200">
-                            <div className="text-center text-gray-300">
-                              <div className="text-4xl mb-2">🎨</div>
-                              <p className="text-sm font-light">Inside Cover</p>
-                            </div>
-                          </div>
-
-                          {/* CENTER BINDING */}
-                          <div className="absolute left-1/2 top-0 w-1 h-full bg-gradient-to-b from-gray-300 via-gray-400 to-gray-300 transform -translate-x-1/2" style={{boxShadow: '0 0 10px rgba(0,0,0,0.3)'}}></div>
-
-                          {/* RIGHT PAGE - Van Gogh portrait */}
-                          <div className="book-page-right w-1/2 bg-gray-900 flex items-center justify-center p-6">
+                          {/* LEFT PAGE - Van Gogh AI Portrait (flips from orange inside cover) */}
+                          <div className="book-page-left w-1/2 bg-gray-900 flex items-center justify-center p-6 border-r border-gray-200">
                             <div className="w-full h-full rounded-lg overflow-hidden shadow-xl">
                               <img 
                                 src="/samples/male/vangogh.jpg"
@@ -1343,6 +1340,33 @@ export default function BuildaBook() {
                                 className="w-full h-full object-cover"
                                 onError={(e) => {
                                   e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="400"%3E%3Crect fill="%23374151" width="400" height="400"/%3E%3Ctext x="50%25" y="45%25" dominant-baseline="middle" text-anchor="middle" font-family="Arial" font-size="24" fill="%23fff" font-weight="bold"%3EVan Gogh%3C/text%3E%3Ctext x="50%25" y="55%25" dominant-baseline="middle" text-anchor="middle" font-family="Arial" font-size="16" fill="%23d1d5db"%3ESample Portrait%3C/text%3E%3C/svg%3E';
+                                }}
+                              />
+                            </div>
+                          </div>
+
+                          {/* CENTER BINDING */}
+                          <div className="absolute left-1/2 top-0 w-1 h-full bg-gradient-to-b from-gray-300 via-gray-400 to-gray-300 transform -translate-x-1/2" style={{boxShadow: '0 0 10px rgba(0,0,0,0.3)'}}></div>
+
+                          {/* RIGHT PAGE - Van Gogh Info */}
+                          <div className="book-page-right w-1/2 bg-white flex items-center justify-center p-6">
+                            <div className="w-full h-full">
+                              <img 
+                                src="/book-pages/vangogh-info.png"
+                                alt="Van Gogh Info"
+                                className="w-full h-full object-contain"
+                                onError={(e) => {
+                                  e.target.parentElement.innerHTML = `
+                                    <div class="flex flex-col items-center justify-center h-full text-gray-800 p-4">
+                                      <h3 class="text-2xl font-bold mb-2">Vincent van Gogh</h3>
+                                      <p class="text-sm text-gray-600 mb-3">1853-1890 • Post-Impressionism</p>
+                                      <div class="text-xs text-gray-700 leading-relaxed text-center">
+                                        <p class="mb-2">Master of bold colors and emotional brushwork</p>
+                                        <p class="mb-2">Famous works: Starry Night, Sunflowers</p>
+                                        <p>Revolutionary style that shaped modern art</p>
+                                      </div>
+                                    </div>
+                                  `;
                                 }}
                               />
                             </div>
