@@ -1297,9 +1297,11 @@ export default function BuildaBook() {
                       {/* BOOK SPINE/BACK (left side when closed) */}
                       <div className="absolute left-0 top-0 w-12 h-full bg-gradient-to-r from-amber-800 to-amber-600 rounded-l-lg" style={{transform: 'translateZ(-10px)'}}></div>
                       
-                      {/* LEFT COVER (opens on hover) */}
-                      <div className="book-cover-left absolute inset-0 bg-white rounded-l-2xl shadow-2xl border-4 border-amber-100 overflow-hidden" style={{zIndex: 10, aspectRatio: '1/1'}}>
-                        <div className="w-full h-full bg-gradient-to-br from-green-700 via-green-600 to-amber-700 p-8 flex flex-col items-center justify-center text-white relative">
+                      {/* LEFT COVER (opens on hover) - Contains front and back */}
+                      <div className="book-cover-left absolute inset-0 rounded-l-2xl shadow-2xl overflow-hidden" style={{zIndex: 10, aspectRatio: '1/1', transformStyle: 'preserve-3d'}}>
+                        
+                        {/* FRONT of cover (green gradient with text) */}
+                        <div className="absolute inset-0 bg-gradient-to-br from-green-700 via-green-600 to-amber-700 p-8 flex flex-col items-center justify-center text-white border-4 border-amber-100 rounded-l-2xl" style={{backfaceVisibility: 'hidden'}}>
                           {/* Front cover design - MATCHES ACTUAL BOOK */}
                           <div className="absolute inset-0 opacity-10" style={{
                             backgroundImage: 'radial-gradient(circle at 20% 50%, transparent 0%, rgba(0,0,0,0.3) 100%)'
@@ -1324,9 +1326,9 @@ export default function BuildaBook() {
                           <div className="absolute left-0 top-0 w-8 h-full bg-gradient-to-r from-black/30 to-transparent"></div>
                         </div>
                         
-                        {/* Back of front cover - SHOWS AI IMAGE when opened */}
-                        <div className="absolute inset-0 bg-gray-900 flex items-center justify-center p-6" style={{transform: 'rotateY(180deg) translateZ(1px)', backfaceVisibility: 'hidden'}}>
-                          <div className="w-full h-full rounded-lg overflow-hidden shadow-xl">
+                        {/* BACK of cover (AI image - shows when flipped) */}
+                        <div className="absolute inset-0 bg-gray-900 flex items-center justify-center p-8 border-4 border-amber-100 rounded-l-2xl" style={{transform: 'rotateY(180deg)', backfaceVisibility: 'hidden'}}>
+                          <div className="w-full h-full rounded-xl overflow-hidden shadow-2xl">
                             <img 
                               src="/samples/male/vangogh.jpg"
                               alt="Van Gogh Style Sample"
