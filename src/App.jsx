@@ -1341,24 +1341,10 @@ export default function BuildaBook() {
                         </div>
                       </div>
 
-                      {/* PAGES 2-3 SPREAD (revealed when pages flip) */}
-                      <div className="relative rounded-2xl shadow-2xl overflow-hidden border-4 border-white" style={{aspectRatio: '2/1'}}>
-                        <div className="absolute inset-0 flex">
-                          
-                          {/* LEFT PAGE (Page 2 - blank or continuation) */}
-                          <div className="w-1/2 bg-white flex items-center justify-center p-6 border-r border-gray-300">
-                            <div className="text-gray-300 text-center">
-                              <div className="text-4xl mb-2">✨</div>
-                              <p className="text-sm font-light">Page 2</p>
-                            </div>
-                          </div>
-
-                          {/* CENTER BINDING */}
-                          <div className="absolute left-1/2 top-0 w-1 h-full bg-gradient-to-b from-gray-300 via-gray-400 to-gray-300 transform -translate-x-1/2" style={{boxShadow: '0 0 10px rgba(0,0,0,0.3)'}}></div>
-
-                          {/* RIGHT PAGE (Page 3 - Van Gogh Info) */}
-                          <div className="w-1/2 bg-white flex items-center justify-center p-6">
-                            <div className="w-full h-full">
+                      {/* PAGE 2 (Van Gogh Info - single square page on the right) */}
+                      <div className="relative rounded-2xl shadow-2xl overflow-hidden border-4 border-white bg-white" style={{aspectRatio: '1/1'}}>
+                        <div className="absolute inset-0 flex items-center justify-center p-6">
+                          <div className="w-full h-full">
                             <img 
                               src="/book-pages/vangogh-info.png"
                               alt="Van Gogh Info"
@@ -1377,7 +1363,6 @@ export default function BuildaBook() {
                                 `;
                               }}
                             />
-                            </div>
                           </div>
                         </div>
                       </div>
