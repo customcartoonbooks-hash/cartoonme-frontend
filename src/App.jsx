@@ -1301,7 +1301,7 @@ export default function BuildaBook() {
                       <div className="absolute left-0 top-0 w-12 h-full bg-gradient-to-r from-amber-800 to-amber-600 rounded-l-lg" style={{transform: 'translateZ(-10px)'}}></div>
                       
                       {/* COVER (flips open on hover) */}
-                      <div className="book-cover absolute inset-0 rounded-l-2xl shadow-2xl overflow-hidden" style={{zIndex: 20, aspectRatio: '1/1'}}>
+                      <div className="book-cover absolute inset-0 rounded-l-2xl shadow-2xl overflow-hidden" style={{zIndex: 30, aspectRatio: '1/1'}}>
                         <div className="absolute inset-0 bg-gradient-to-br from-green-700 via-green-600 to-amber-700 p-8 flex flex-col items-center justify-center text-white border-4 border-amber-100 rounded-l-2xl">
                           <div className="absolute inset-0 opacity-10" style={{
                             backgroundImage: 'radial-gradient(circle at 20% 50%, transparent 0%, rgba(0,0,0,0.3) 100%)'
@@ -1327,9 +1327,9 @@ export default function BuildaBook() {
                       </div>
 
                       {/* PAGE 1 (AI image - flips on top of cover) */}
-                      <div className="book-page-1 absolute inset-0 rounded-l-2xl shadow-xl overflow-hidden" style={{zIndex: 30, aspectRatio: '1/1'}}>
+                      <div className="book-page-1 absolute inset-0 rounded-l-2xl shadow-xl overflow-hidden" style={{zIndex: 20, aspectRatio: '1/1', transformStyle: 'preserve-3d'}}>
                         {/* FRONT: AI Image */}
-                        <div className="absolute inset-0 bg-gray-900 flex items-center justify-center p-8 border-4 border-white rounded-l-2xl" style={{backfaceVisibility: 'hidden'}}>
+                        <div className="absolute inset-0 bg-gray-900 flex items-center justify-center p-8 border-4 border-white rounded-l-2xl" style={{backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden'}}>
                           <div className="w-full h-full rounded-xl overflow-hidden shadow-2xl">
                             <img 
                               src="/samples/male/vangogh.jpg"
@@ -1341,9 +1341,9 @@ export default function BuildaBook() {
                             />
                           </div>
                         </div>
-                        {/* BACK: SAME AI Image (shown when flipped) */}
-                        <div className="absolute inset-0 bg-gray-900 flex items-center justify-center p-8 border-4 border-white rounded-l-2xl" style={{transform: 'rotateY(180deg) scaleX(-1)', backfaceVisibility: 'hidden'}}>
-                          <div className="w-full h-full rounded-xl overflow-hidden shadow-2xl">
+                        {/* BACK: SAME AI Image (shown when flipped) - NO SCALE TRANSFORM */}
+                        <div className="absolute inset-0 bg-gray-900 flex items-center justify-center p-8 border-4 border-white rounded-l-2xl" style={{transform: 'rotateY(180deg)', backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden'}}>
+                          <div className="w-full h-full rounded-xl overflow-hidden shadow-2xl" style={{transform: 'scaleX(-1)'}}>
                             <img 
                               src="/samples/male/vangogh.jpg"
                               alt="Van Gogh Style Sample"
