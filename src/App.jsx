@@ -1268,15 +1268,14 @@ export default function BuildaBook() {
                         transform: rotateY(-160deg);
                       }
                       
-                      /* First page (AI image) also flips */
+                      /* AI page - simple opacity reveal, no flip */
                       .book-page-1 {
-                        transform-origin: left center;
-                        transform-style: preserve-3d;
-                        transition: transform 0.8s cubic-bezier(0.4, 0.0, 0.2, 1) 0.2s;
+                        opacity: 0;
+                        transition: opacity 0.4s ease 0.6s;
                       }
                       
                       .group:hover .book-page-1 {
-                        transform: rotateY(-180deg);
+                        opacity: 1;
                       }
                       
                       .book-shadow {
@@ -1326,24 +1325,10 @@ export default function BuildaBook() {
                         </div>
                       </div>
 
-                      {/* PAGE 1 (AI image - flips on top of cover) */}
-                      <div className="book-page-1 absolute inset-0 rounded-l-2xl shadow-xl overflow-hidden" style={{zIndex: 20, aspectRatio: '1/1', transformStyle: 'preserve-3d'}}>
-                        {/* FRONT: AI Image */}
-                        <div className="absolute inset-0 bg-gray-900 flex items-center justify-center p-8 border-4 border-white rounded-l-2xl" style={{backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden'}}>
+                      {/* PAGE 1 (AI image - fades in when cover opens, positioned on LEFT) */}
+                      <div className="book-page-1 absolute left-0 top-0 rounded-2xl shadow-2xl overflow-hidden" style={{zIndex: 25, aspectRatio: '1/1', width: '100%'}}>
+                        <div className="w-full h-full bg-gray-900 flex items-center justify-center p-8 border-4 border-white rounded-2xl">
                           <div className="w-full h-full rounded-xl overflow-hidden shadow-2xl">
-                            <img 
-                              src="/samples/male/vangogh.jpg"
-                              alt="Van Gogh Style Sample"
-                              className="w-full h-full object-cover"
-                              onError={(e) => {
-                                e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="400"%3E%3Crect fill="%23374151" width="400" height="400"/%3E%3Ctext x="50%25" y="45%25" dominant-baseline="middle" text-anchor="middle" font-family="Arial" font-size="24" fill="%23fff" font-weight="bold"%3EVan Gogh%3C/text%3E%3Ctext x="50%25" y="55%25" dominant-baseline="middle" text-anchor="middle" font-family="Arial" font-size="16" fill="%23d1d5db"%3ESample Portrait%3C/text%3E%3C/svg%3E';
-                              }}
-                            />
-                          </div>
-                        </div>
-                        {/* BACK: SAME AI Image (shown when flipped) - NO SCALE TRANSFORM */}
-                        <div className="absolute inset-0 bg-gray-900 flex items-center justify-center p-8 border-4 border-white rounded-l-2xl" style={{transform: 'rotateY(180deg)', backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden'}}>
-                          <div className="w-full h-full rounded-xl overflow-hidden shadow-2xl" style={{transform: 'scaleX(-1)'}}>
                             <img 
                               src="/samples/male/vangogh.jpg"
                               alt="Van Gogh Style Sample"
@@ -1356,7 +1341,7 @@ export default function BuildaBook() {
                         </div>
                       </div>
 
-                      {/* PAGE 2 (Van Gogh Info - single square page on the right) */}
+                      {/* PAGE 2 (Van Gogh Info - positioned on RIGHT) */}
                       <div className="relative rounded-2xl shadow-2xl overflow-hidden border-4 border-white bg-white" style={{aspectRatio: '1/1'}}>
                         <div className="absolute inset-0 flex items-center justify-center p-6">
                           <div className="w-full h-full">
