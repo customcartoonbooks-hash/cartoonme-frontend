@@ -48,6 +48,16 @@ export default function BuildaBook() {
   const [isVerifying, setIsVerifying] = useState(false);
   const [customerName, setCustomerName] = useState('');
   const [dedication, setDedication] = useState('');
+  
+  // Homepage book preview slideshow
+  const [homepageArtistIndex, setHomepageArtistIndex] = useState(0);
+  
+  // List of all 12 artists for slideshow
+  const artistSlideshow = [
+    'vangogh', 'davinci', 'michelangelo', 'raphael', 
+    'rembrandt', 'vermeer', 'monet', 'munch', 
+    'picasso', 'dali', 'warhol', 'grantwood'
+  ];
   const [showImageModal, setShowImageModal] = useState(false);
   const [selectedModalImage, setSelectedModalImage] = useState(null);
   const [showEditDedication, setShowEditDedication] = useState(false);
@@ -67,6 +77,16 @@ export default function BuildaBook() {
   
   const fileInputRef = useRef(null);
   const codeInputRefs = useRef([]);
+
+  // Homepage book preview slideshow - cycle through artists every 2 seconds
+  useEffect(() => {
+    const slideshowInterval = setInterval(() => {
+      setHomepageArtistIndex((prev) => (prev + 1) % artistSlideshow.length);
+    }, 2000); // Change image every 2 seconds
+
+    return () => clearInterval(slideshowInterval);
+  }, []);
+
 
   const colorOptions = [
     { name: 'blue', bg: 'bg-blue-500', label: 'Blue', cover: 'blue-cover.jpg' },
@@ -1325,18 +1345,26 @@ export default function BuildaBook() {
                         </div>
                       </div>
 
-                      {/* PAGE 1 (AI image - fades in when cover opens, positioned on LEFT) */}
+                      {/* PAGE 1 (AI image - fades in when cover opens, positioned on LEFT) - SLIDESHOW */}
                       <div className="book-page-1 absolute left-0 top-0 rounded-2xl shadow-2xl overflow-hidden" style={{zIndex: 25, aspectRatio: '1/1', width: '100%'}}>
                         <div className="w-full h-full bg-gray-900 flex items-center justify-center p-8 border-4 border-white rounded-2xl">
-                          <div className="w-full h-full rounded-xl overflow-hidden shadow-2xl">
-                            <img 
-                              src="/samples/male/vangogh.jpg"
-                              alt="Van Gogh Style Sample"
-                              className="w-full h-full object-cover"
-                              onError={(e) => {
-                                e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="400"%3E%3Crect fill="%23374151" width="400" height="400"/%3E%3Ctext x="50%25" y="45%25" dominant-baseline="middle" text-anchor="middle" font-family="Arial" font-size="24" fill="%23fff" font-weight="bold"%3EVan Gogh%3C/text%3E%3Ctext x="50%25" y="55%25" dominant-baseline="middle" text-anchor="middle" font-family="Arial" font-size="16" fill="%23d1d5db"%3ESample Portrait%3C/text%3E%3C/svg%3E';
-                              }}
-                            />
+                          <div className="w-full h-full rounded-xl overflow-hidden shadow-2xl relative">
+                            {/* Cycle through all 12 artists */}
+                            {artistSlideshow.map((artistFilename, index) => (
+                              <img 
+                                key={artistFilename}
+                                src={`/samples/male/${artistFilename}.jpg`}
+                                alt={`${artistFilename} Style Sample`}
+                                className="absolute inset-0 w-full h-full object-cover transition-opacity duration-700"
+                                style={{
+                                  opacity: homepageArtistIndex === index ? 1 : 0,
+                                  zIndex: homepageArtistIndex === index ? 1 : 0
+                                }}
+                                onError={(e) => {
+                                  e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="400"%3E%3Crect fill="%23374151" width="400" height="400"/%3E%3Ctext x="50%25" y="45%25" dominant-baseline="middle" text-anchor="middle" font-family="Arial" font-size="24" fill="%23fff" font-weight="bold"%3ESample%3C/text%3E%3C/svg%3E';
+                                }}
+                              />
+                            ))}
                           </div>
                         </div>
                       </div>
