@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin - Leads Dashboard</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    .header {
+      background: white;
+      padding: 30px;
+      border-radius: 15px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+      margin-bottom: 30px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    h1 {
+      font-size: 32px;
+      color: #1a202c;
+    }
+    .stats {
+      display: flex;
+      gap: 20px;
+    }
+    .stat-box {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 15px 25px;
+      border-radius: 10px;
+      text-align: center;
+    }
+    .stat-number {
+      font-size: 28px;
+      font-weight: bold;
+    }
+    .stat-label {
+      font-size: 12px;
+      opacity: 0.9;
+      margin-top: 5px;
+    }
+    .login-box {
+      background: white;
+      padding: 40px;
+      border-radius: 15px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+      max-width: 400px;
+      margin: 100px auto;
+    }
+    .login-box h2 {
+      margin-bottom: 20px;
+      color: #1a202c;
+    }
+    input {
+      width: 100%;
+      padding: 15px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 16px;
+      margin-bottom: 15px;
+    }
+    input:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+    button {
+      width: 100%;
+      padding: 15px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    button:hover {
+      transform: translateY(-2px);
+    }
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    .error {
+      background: #fee;
+      color: #c33;
+      padding: 10px;
+      border-radius: 5px;
+      margin-bottom: 15px;
+      display: none;
+    }
+    table {
+      width: 100%;
+      background: white;
+      border-radius: 15px;
+      overflow: hidden;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+    }
+    th {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 15px;
+      text-align: left;
+      font-weight: 600;
+    }
+    td {
+      padding: 15px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    tr:last-child td {
+      border-bottom: none;
+    }
+    tr:hover {
+      background: #f7fafc;
+    }
+    .badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+    .badge-paid {
+      background: #10b981;
+      color: white;
+    }
+    .badge-preview {
+      background: #f59e0b;
+      color: white;
+    }
+    .actions {
+      margin-bottom: 20px;
+      display: flex;
+      gap: 15px;
+    }
+    .btn-download {
+      padding: 12px 24px;
+      background: #10b981;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-weight: bold;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn-refresh {
+      padding: 12px 24px;
+      background: #3b82f6;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .loading {
+      text-align: center;
+      padding: 40px;
+      font-size: 18px;
+      color: #64748b;
+    }
+  </style>
+</head>
+<body>
+  <div id="login-screen" class="login-box">
+    <h2>🔐 Admin Login</h2>
+    <div id="login-error" class="error"></div>
+    <input type="password" id="password-input" placeholder="Enter admin password" />
+    <button id="login-btn">Login</button>
+  </div>
+
+  <div id="dashboard" class="container" style="display: none;">
+    <div class="header">
+      <h1>📊 Leads Dashboard</h1>
+      <div class="stats">
+        <div class="stat-box">
+          <div class="stat-number" id="total-leads">0</div>
+          <div class="stat-label">Total Leads</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-number" id="paid-customers">0</div>
+          <div class="stat-label">Paid Customers</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn-download" id="download-csv">
+        📥 Download CSV
+      </button>
+      <button class="btn-refresh" id="refresh-btn">
+        🔄 Refresh
+      </button>
+    </div>
+
+    <div id="loading" class="loading">Loading leads...</div>
+    
+    <table id="leads-table" style="display: none;">
+      <thead>
+        <tr>
+          <th>Email</th>
+          <th>Phone</th>
+          <th>Name</th>
+          <th>Gender</th>
+          <th>Status</th>
+          <th>Created</th>
+          <th>Session ID</th>
+        </tr>
+      </thead>
+      <tbody id="leads-tbody">
+      </tbody>
+    </table>
+  </div>
+
+  <script>
+    const BACKEND_URL = 'https://cartoonme-backend.onrender.com';
+    let authToken = null;
+    let leadsData = [];
+
+    // Login
+    document.getElementById('login-btn').addEventListener('click', async () => {
+      const password = document.getElementById('password-input').value;
+      if (!password) return;
+
+      document.getElementById('login-btn').disabled = true;
+      document.getElementById('login-error').style.display = 'none';
+
+      try {
+        const response = await fetch(`${BACKEND_URL}/api/admin/leads`, {
+          headers: {
+            'Authorization': `Bearer ${password}`
+          }
+        });
+
+        if (response.ok) {
+          authToken = password;
+          document.getElementById('login-screen').style.display = 'none';
+          document.getElementById('dashboard').style.display = 'block';
+          loadLeads();
+        } else {
+          document.getElementById('login-error').textContent = 'Invalid password';
+          document.getElementById('login-error').style.display = 'block';
+        }
+      } catch (error) {
+        document.getElementById('login-error').textContent = 'Connection error';
+        document.getElementById('login-error').style.display = 'block';
+      }
+
+      document.getElementById('login-btn').disabled = false;
+    });
+
+    // Enter key to login
+    document.getElementById('password-input').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        document.getElementById('login-btn').click();
+      }
+    });
+
+    // Load leads
+    async function loadLeads() {
+      document.getElementById('loading').style.display = 'block';
+      document.getElementById('leads-table').style.display = 'none';
+
+      try {
+        const response = await fetch(`${BACKEND_URL}/api/admin/leads`, {
+          headers: {
+            'Authorization': `Bearer ${authToken}`
+          }
+        });
+
+        const data = await response.json();
+        leadsData = data.leads;
+
+        // Update stats
+        document.getElementById('total-leads').textContent = data.total;
+        document.getElementById('paid-customers').textContent = 
+          data.leads.filter(l => l.isPaid).length;
+
+        // Populate table
+        const tbody = document.getElementById('leads-tbody');
+        tbody.innerHTML = '';
+
+        data.leads.forEach(lead => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td><strong>${lead.email || '-'}</strong></td>
+            <td>${lead.phone || '-'}</td>
+            <td>${lead.name || '-'}</td>
+            <td>${lead.gender || '-'}</td>
+            <td>
+              ${lead.isPaid ? '<span class="badge badge-paid">💳 PAID</span>' : ''}
+              ${lead.isPreview ? '<span class="badge badge-preview">👁️ Preview</span>' : ''}
+            </td>
+            <td>${new Date(lead.createdAt).toLocaleString()}</td>
+            <td><small>${lead.sessionId}</small></td>
+          `;
+          tbody.appendChild(row);
+        });
+
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('leads-table').style.display = 'table';
+      } catch (error) {
+        document.getElementById('loading').textContent = 'Error loading leads';
+      }
+    }
+
+    // Refresh button
+    document.getElementById('refresh-btn').addEventListener('click', loadLeads);
+
+    // Download CSV
+    document.getElementById('download-csv').addEventListener('click', () => {
+      const headers = ['Email', 'Phone', 'Name', 'Gender', 'Paid', 'Preview', 'Created', 'Session ID'];
+      const rows = leadsData.map(lead => [
+        lead.email || '',
+        lead.phone || '',
+        lead.name || '',
+        lead.gender || '',
+        lead.isPaid ? 'Yes' : 'No',
+        lead.isPreview ? 'Yes' : 'No',
+        new Date(lead.createdAt).toLocaleString(),
+        lead.sessionId
+      ]);
+
+      const csv = [
+        headers.join(','),
+        ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+      ].join('\n');
+
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `leads-${new Date().toISOString().split('T')[0]}.csv`;
+      a.click();
+    });
+  </script>
+</body>
+</html>
