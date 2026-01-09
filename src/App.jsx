@@ -1504,7 +1504,6 @@ export default function BuildaBook() {
                   <h2 className="text-4xl md:text-6xl font-black mb-4">
                     12 Legendary Artists Paint <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-600 to-red-600">YOU</span>
                   </h2>
-                  <p className="text-xl text-gray-600">Hover to see the magic ✨</p>
                 </div>
 
                 <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
@@ -1664,6 +1663,7 @@ export default function BuildaBook() {
               </div>
 
               <div
+                id="upload-section"
                 className={`relative border-4 border-dashed rounded-[3rem] p-16 transition-all duration-500 ${
                   isDragging 
                     ? 'border-amber-600 bg-amber-50 scale-105 shadow-2xl' 
@@ -1729,7 +1729,7 @@ export default function BuildaBook() {
 
             {/* CAPTCHA SECTION */}
             {!captchaVerified && (
-              <div id="upload-section" className="mt-8 text-center">
+              <div className="mt-8 text-center">
                 <p className="text-gray-600 mb-4">Complete security check to continue:</p>
                 <div className="flex justify-center">
                   <Turnstile
