@@ -51,6 +51,16 @@ export default function BuildaBook() {
   
   // Homepage book preview slideshow
   const [homepageArtistIndex, setHomepageArtistIndex] = useState(0);
+  const [isBookOpen, setIsBookOpen] = useState(false);
+  
+  // Smart counter that increases realistically
+  const getInitialCount = () => {
+    // Base count between 1200-1300, changes daily but stays same for the day
+    const today = new Date().toDateString();
+    const seed = today.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    return 1200 + (seed % 100);
+  };
+  const [masterpieceCount, setMasterpieceCount] = useState(getInitialCount());
   
   // List of all 12 artists for slideshow
   const artistSlideshow = [
@@ -85,6 +95,24 @@ export default function BuildaBook() {
     }, 2000); // Change image every 2 seconds
 
     return () => clearInterval(slideshowInterval);
+  }, []);
+
+  // Smart counter - increase randomly while user is on page
+  useEffect(() => {
+    // Random interval between 15-45 seconds
+    const getRandomInterval = () => Math.floor(Math.random() * 30000) + 15000;
+    
+    let counterTimeout;
+    const scheduleNextIncrement = () => {
+      counterTimeout = setTimeout(() => {
+        setMasterpieceCount(prev => prev + 1);
+        scheduleNextIncrement(); // Schedule next increment
+      }, getRandomInterval());
+    };
+    
+    scheduleNextIncrement();
+    
+    return () => clearTimeout(counterTimeout);
   }, []);
 
 
@@ -1215,7 +1243,7 @@ export default function BuildaBook() {
                     <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 border-2 border-white"></div>
                   </div>
                   <span className="text-sm font-bold text-amber-600">
-                    1,247+ masterpieces created ✨
+                    {masterpieceCount.toLocaleString()}+ masterpieces created ✨
                   </span>
                 </div>
                 
@@ -1246,7 +1274,14 @@ export default function BuildaBook() {
                 {!uploadedImage && (
                   <div className="space-y-4 pt-4">
                     <button
-                      onClick={() => fileInputRef.current?.click()}
+                      onClick={() => {
+                        const uploadSection = document.getElementById('upload-section');
+                        if (uploadSection) {
+                          uploadSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        } else {
+                          fileInputRef.current?.click();
+                        }
+                      }}
                       className="group relative w-full lg:w-auto px-10 py-5 bg-gradient-to-r from-amber-600 via-red-600 to-pink-600 text-white rounded-2xl font-black text-xl shadow-2xl hover:shadow-amber-500/50 transition-all duration-300 transform hover:scale-105 overflow-hidden">
                       <div className="absolute inset-0 bg-white/20 transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
                       <span className="relative flex items-center justify-center gap-3">
@@ -1264,8 +1299,11 @@ export default function BuildaBook() {
               {/* RIGHT: 3D Book Mockup */}
               <div className="space-y-8 order-1 lg:order-2">
                 <div className="relative group" style={{perspective: '1000px'}}>
-                  {/* 3D ANIMATED BOOK THAT OPENS ON HOVER */}
-                  <div className="relative group cursor-pointer perspective-container">
+                  {/* 3D ANIMATED BOOK */}
+                  <div className={`relative cursor-pointer perspective-container ${isBookOpen ? 'book-open' : ''}`}
+                    onMouseEnter={() => setIsBookOpen(true)}
+                    onMouseLeave={() => setIsBookOpen(false)}
+                  >
                     <style>{`
                       .perspective-container {
                         perspective: 2000px;
@@ -1284,7 +1322,7 @@ export default function BuildaBook() {
                         backface-visibility: visible;
                       }
                       
-                      .group:hover .book-cover {
+                      .book-open .book-cover {
                         transform: rotateY(-160deg);
                       }
                       
@@ -1294,7 +1332,7 @@ export default function BuildaBook() {
                         transition: opacity 0.4s ease 0.6s;
                       }
                       
-                      .group:hover .book-page-1 {
+                      .book-open .book-page-1 {
                         opacity: 1;
                       }
                       
@@ -1407,12 +1445,6 @@ export default function BuildaBook() {
                     <div className="absolute -bottom-4 -left-4 bg-gradient-to-br from-green-400 to-emerald-600 text-white px-4 py-2 rounded-xl font-black text-sm shadow-2xl z-20">
                       Premium
                     </div>
-
-                    {/* Hover instruction tooltip */}
-                    <div className="absolute -bottom-12 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap">
-                      <div className="bg-gray-900 text-white px-4 py-2 rounded-full text-xs font-semibold shadow-xl">
-                        👆 Hover to open book!
-                      </div>
                     </div>
                   </div>
                 </div>
@@ -1450,6 +1482,8 @@ export default function BuildaBook() {
                       if (video) {
                         video.play();
                       }
+                      // Also open the book slideshow
+                      setIsBookOpen(true);
                     }}
                   >
                     <div className="w-20 h-20 bg-white/20 backdrop-blur-lg rounded-full flex items-center justify-center hover:bg-white/30 hover:scale-110 transition-all">
@@ -1476,24 +1510,34 @@ export default function BuildaBook() {
 
                 <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
                   {[
-                    { name: 'Van Gogh', emoji: '🌟', color: 'from-blue-600 to-yellow-500' },
-                    { name: 'Picasso', emoji: '🎨', color: 'from-red-600 to-pink-500' },
-                    { name: 'Warhol', emoji: '🎭', color: 'from-purple-600 to-pink-500' },
-                    { name: 'Monet', emoji: '🌊', color: 'from-blue-500 to-green-400' },
-                    { name: 'Da Vinci', emoji: '🖼️', color: 'from-amber-700 to-yellow-600' },
-                    { name: 'Dalí', emoji: '⏰', color: 'from-orange-600 to-red-500' },
-                    { name: 'Rembrandt', emoji: '💡', color: 'from-amber-800 to-orange-600' },
-                    { name: 'Munch', emoji: '😱', color: 'from-red-700 to-orange-500' },
-                    { name: 'Vermeer', emoji: '💎', color: 'from-blue-700 to-cyan-500' },
-                    { name: 'Michelangelo', emoji: '🗿', color: 'from-gray-600 to-blue-400' },
-                    { name: 'Raphael', emoji: '👼', color: 'from-pink-500 to-rose-400' },
-                    { name: 'Grant Wood', emoji: '🌾', color: 'from-green-700 to-yellow-600' }
+                    { name: 'Van Gogh', displayName: 'Post-Impressionism', image: 'vangogh.jpg', color: 'from-blue-600 to-yellow-500' },
+                    { name: 'Picasso', displayName: 'Cubism', image: 'picasso.jpg', color: 'from-red-600 to-pink-500' },
+                    { name: 'Andy Warhol', displayName: 'Pop Art', image: 'warhol.jpg', color: 'from-purple-600 to-pink-500' },
+                    { name: 'Monet', displayName: 'Impressionism', image: 'monet.jpg', color: 'from-blue-500 to-green-400' },
+                    { name: 'Da Vinci', displayName: 'Renaissance', image: 'davinci.jpg', color: 'from-amber-700 to-yellow-600' },
+                    { name: 'Salvador Dalí', displayName: 'Surrealism', image: 'dali.jpg', color: 'from-orange-600 to-red-500' },
+                    { name: 'Rembrandt', displayName: 'Baroque', image: 'rembrandt.jpg', color: 'from-amber-800 to-orange-600' },
+                    { name: 'Munch', displayName: 'Expressionism', image: 'munch.jpg', color: 'from-red-700 to-orange-500' },
+                    { name: 'Vermeer', displayName: 'Dutch Golden Age', image: 'vermeer.jpg', color: 'from-blue-700 to-cyan-500' },
+                    { name: 'Michelangelo', displayName: 'High Renaissance', image: 'michelangelo.jpg', color: 'from-gray-600 to-blue-400' },
+                    { name: 'Raphael', displayName: 'Renaissance', image: 'raphael.jpg', color: 'from-pink-500 to-rose-400' },
+                    { name: 'Grant Wood', displayName: 'American Realism', image: 'grantwood.jpg', color: 'from-green-700 to-yellow-600' }
                   ].map((artist, idx) => (
-                    <div key={idx} className="group relative bg-white/80 backdrop-blur-sm rounded-3xl p-6 shadow-xl hover:shadow-2xl transition-all duration-500 transform hover:scale-125 hover:-translate-y-3 cursor-pointer overflow-hidden">
-                      <div className={`absolute inset-0 bg-gradient-to-br ${artist.color} opacity-0 group-hover:opacity-20 transition-opacity duration-500`}></div>
-                      <div className="relative z-10">
-                        <div className="text-4xl mb-2 transform group-hover:scale-125 group-hover:rotate-12 transition-transform duration-500">{artist.emoji}</div>
-                        <p className="font-bold text-xs text-gray-800 group-hover:text-amber-600 transition-colors">{artist.name}</p>
+                    <div key={idx} className="group relative bg-white rounded-3xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-500 transform hover:scale-105 cursor-default">
+                      <div className={`absolute inset-0 bg-gradient-to-br ${artist.color} opacity-0 group-hover:opacity-30 transition-opacity duration-500`}></div>
+                      <div className="relative aspect-square">
+                        <img 
+                          src={`/artist-thumbnails/${artist.image}`} 
+                          alt={`${artist.displayName} by ${artist.name}`}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.target.parentElement.innerHTML = `<div class="w-full h-full flex items-center justify-center bg-gradient-to-br ${artist.color}"><span class="text-6xl text-white font-bold">${artist.name.charAt(0)}</span></div>`;
+                          }}
+                        />
+                      </div>
+                      <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 to-transparent p-3">
+                        <p className="font-bold text-sm text-white">{artist.displayName}</p>
+                        <p className="text-xs text-white/80">{artist.name}</p>
                       </div>
                     </div>
                   ))}
@@ -1686,7 +1730,7 @@ export default function BuildaBook() {
 
             {/* CAPTCHA SECTION */}
             {!captchaVerified && (
-              <div className="mt-8 text-center">
+              <div id="upload-section" className="mt-8 text-center">
                 <p className="text-gray-600 mb-4">Complete security check to continue:</p>
                 <div className="flex justify-center">
                   <Turnstile
