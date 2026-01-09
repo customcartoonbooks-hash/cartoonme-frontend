@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Upload, ArrowRight, Check, Loader, Copy, Home, Undo, Redo, Clock, ChevronLeft, ChevronRight, X, Mail, Phone, Edit2, Link } from 'lucide-react';
+import { Upload, ArrowRight, Check, Loader, Copy, Undo, Redo, Clock, ChevronLeft, ChevronRight, X, Mail, Phone, Edit2 } from 'lucide-react';
 import { Turnstile } from '@marsidev/react-turnstile';
 import CoverTypeSelector from './components/CoverTypeSelector';
 
@@ -53,14 +53,26 @@ export default function BuildaBook() {
   const [homepageArtistIndex, setHomepageArtistIndex] = useState(0);
   const [isBookOpen, setIsBookOpen] = useState(false);
   
-  // Smart counter that increases realistically
-  const getInitialCount = () => {
-    // Base count between 1200-1300, changes daily but stays same for the day
-    const today = new Date().toDateString();
-    const seed = today.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    return 1200 + (seed % 100);
-  };
-  const [masterpieceCount, setMasterpieceCount] = useState(getInitialCount());
+  // Smart counter that syncs across all users via backend
+  const [masterpieceCount, setMasterpieceCount] = useState(1250); // Default value
+  
+  // Fetch initial counter value from backend
+  useEffect(() => {
+    const fetchCounter = async () => {
+      try {
+        const response = await fetch(`${BACKEND_URL}/api/counter`);
+        const data = await response.json();
+        setMasterpieceCount(data.count);
+      } catch (error) {
+        console.error('Failed to fetch counter:', error);
+      }
+    };
+    
+    fetchCounter();
+    // Refresh counter every 30 seconds to stay in sync
+    const interval = setInterval(fetchCounter, 30000);
+    return () => clearInterval(interval);
+  }, []);
   
   // List of all 12 artists for slideshow
   const artistSlideshow = [
@@ -95,24 +107,6 @@ export default function BuildaBook() {
     }, 2000); // Change image every 2 seconds
 
     return () => clearInterval(slideshowInterval);
-  }, []);
-
-  // Smart counter - increase randomly while user is on page
-  useEffect(() => {
-    // Random interval between 15-45 seconds
-    const getRandomInterval = () => Math.floor(Math.random() * 30000) + 15000;
-    
-    let counterTimeout;
-    const scheduleNextIncrement = () => {
-      counterTimeout = setTimeout(() => {
-        setMasterpieceCount(prev => prev + 1);
-        scheduleNextIncrement(); // Schedule next increment
-      }, getRandomInterval());
-    };
-    
-    scheduleNextIncrement();
-    
-    return () => clearTimeout(counterTimeout);
   }, []);
 
 
@@ -1185,23 +1179,6 @@ export default function BuildaBook() {
               BuildaBook
             </span>
           </button>
-
-          <div className="flex items-center gap-4">
-            {sessionId && (
-              <button
-                onClick={copyLink}
-                className="flex items-center gap-2 px-4 py-2 bg-amber-100 text-amber-800 rounded-full hover:bg-amber-200 transition font-semibold">
-                <Link className="w-4 h-4" />
-                Copy Link
-              </button>
-            )}
-            <button
-              onClick={() => setCurrentStep('home')}
-              className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-full hover:bg-gray-200 transition">
-              <Home className="w-4 h-4" />
-              Home
-            </button>
-          </div>
         </div>
       </header>
 
@@ -3561,8 +3538,17 @@ export default function BuildaBook() {
 
       {/* SAMPLE BOOK BROWSER MODAL */}
       {showSampleBrowser && (
-        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-2 md:p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl p-4 md:p-8 max-w-6xl w-full max-h-[95vh] overflow-y-auto my-4 md:my-8">
+        <div 
+          className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-2 md:p-4 overflow-y-auto"
+          onClick={() => {
+            setShowSampleBrowser(false);
+            setCurrentSampleBookPage(0);
+          }}
+        >
+          <div 
+            className="bg-white rounded-3xl p-4 md:p-8 max-w-6xl w-full max-h-[95vh] overflow-y-auto my-4 md:my-8"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex justify-between items-center mb-4 md:mb-8">
               <div>
                 <h2 className="text-2xl md:text-4xl font-bold mb-1 md:mb-2">
@@ -3949,7 +3935,12 @@ export default function BuildaBook() {
                 onClick={() => {
                   setShowSampleBrowser(false);
                   // Scroll to upload section
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                  setTimeout(() => {
+                    const uploadSection = document.getElementById('upload-section');
+                    if (uploadSection) {
+                      uploadSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                  }, 100);
                 }}
                 className="w-full bg-gradient-to-r from-amber-600 to-red-600 text-white py-4 px-8 rounded-full font-bold text-lg hover:shadow-xl transition">
                 Create Your Own Book →
