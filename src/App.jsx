@@ -1732,61 +1732,19 @@ export default function BuildaBook() {
                     Don't worry - we'll never spam you or share your info
                   </p>
 
-                  {/* Tab Selector */}
-                  <div className="flex gap-2 mb-6 bg-gray-100 p-1 rounded-xl">
-                    <button
-                      onClick={() => setContactMethod('email')}
-                      className={`flex-1 py-3 rounded-lg font-semibold transition-all ${
-                        contactMethod === 'email'
-                          ? 'bg-white text-amber-600 shadow-md'
-                          : 'text-gray-600 hover:text-gray-900'
-                      }`}>
-                      <Mail className="w-4 h-4 inline mr-2" />
-                      Email
-                    </button>
-                    <button
-                      onClick={() => setContactMethod('sms')}
-                      className={`flex-1 py-3 rounded-lg font-semibold transition-all ${
-                        contactMethod === 'sms'
-                          ? 'bg-white text-amber-600 shadow-md'
-                          : 'text-gray-600 hover:text-gray-900'
-                      }`}>
-                      <Phone className="w-4 h-4 inline mr-2" />
-                      Text Message
-                    </button>
-                  </div>
-
-                  {/* Single Input Field */}
+                  {/* Email Input Only */}
                   <div className="mb-6">
-                    {contactMethod === 'email' ? (
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">
-                          Your Email Address
-                        </label>
-                        <input
-                          type="email"
-                          value={contactValue}
-                          onChange={(e) => setContactValue(e.target.value)}
-                          placeholder="you@example.com"
-                          className="w-full px-6 py-4 border-2 border-gray-300 rounded-xl focus:border-amber-600 focus:outline-none text-lg transition"
-                          autoFocus
-                        />
-                      </div>
-                    ) : (
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">
-                          Your Phone Number
-                        </label>
-                        <input
-                          type="tel"
-                          value={contactValue}
-                          onChange={(e) => setContactValue(e.target.value)}
-                          placeholder="(555) 123-4567"
-                          className="w-full px-6 py-4 border-2 border-gray-300 rounded-xl focus:border-amber-600 focus:outline-none text-lg transition"
-                          autoFocus
-                        />
-                      </div>
-                    )}
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Your Email Address
+                    </label>
+                    <input
+                      type="email"
+                      value={contactValue}
+                      onChange={(e) => setContactValue(e.target.value)}
+                      placeholder="you@example.com"
+                      className="w-full px-6 py-4 border-2 border-gray-300 rounded-xl focus:border-amber-600 focus:outline-none text-lg transition"
+                      autoFocus
+                    />
                   </div>
 
                   <button
