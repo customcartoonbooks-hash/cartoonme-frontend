@@ -56,22 +56,41 @@ export default function BuildaBook() {
   // Smart counter that syncs across all users via backend
   const [masterpieceCount, setMasterpieceCount] = useState(1250); // Default value
   
-  // Fetch initial counter value from backend
+  // Generate unique user session ID
+  const getUserSessionId = () => {
+    let sessionId = sessionStorage.getItem('userSessionId');
+    if (!sessionId) {
+      sessionId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      sessionStorage.setItem('userSessionId', sessionId);
+    }
+    return sessionId;
+  };
+  
+  // Send heartbeat and fetch counter - only while user is on page
   useEffect(() => {
-    const fetchCounter = async () => {
+    const userId = getUserSessionId();
+    
+    const sendHeartbeat = async () => {
       try {
-        const response = await fetch(`${BACKEND_URL}/api/counter`);
+        const response = await fetch(`${BACKEND_URL}/api/counter/heartbeat`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId })
+        });
         const data = await response.json();
         setMasterpieceCount(data.count);
       } catch (error) {
-        console.error('Failed to fetch counter:', error);
+        console.error('Failed to send heartbeat:', error);
       }
     };
     
-    fetchCounter();
-    // Refresh counter every 30 seconds to stay in sync
-    const interval = setInterval(fetchCounter, 30000);
-    return () => clearInterval(interval);
+    // Send initial heartbeat
+    sendHeartbeat();
+    
+    // Send heartbeat every 30 seconds while user is on page
+    const heartbeatInterval = setInterval(sendHeartbeat, 30000);
+    
+    return () => clearInterval(heartbeatInterval);
   }, []);
   
   // List of all 12 artists for slideshow
