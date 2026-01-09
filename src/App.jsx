@@ -1445,7 +1445,6 @@ export default function BuildaBook() {
                     <div className="absolute -bottom-4 -left-4 bg-gradient-to-br from-green-400 to-emerald-600 text-white px-4 py-2 rounded-xl font-black text-sm shadow-2xl z-20">
                       Premium
                     </div>
-                    </div>
                   </div>
                 </div>
 
