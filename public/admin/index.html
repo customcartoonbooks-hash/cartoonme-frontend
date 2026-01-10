@@ -312,24 +312,40 @@
       const password = document.getElementById('password-input').value;
       if (!password) return;
 
+      document.getElementById('login-btn').disabled = true;
+      document.getElementById('login-error').style.display = 'none';
+
       try {
-        const response = await fetch(`${BACKEND_URL}/api/admin/analytics`, {
+        // Try analytics endpoint first
+        let response = await fetch(`${BACKEND_URL}/api/admin/analytics`, {
           headers: { 'Authorization': `Bearer ${password}` }
         });
+
+        // Fallback to leads endpoint if analytics doesn't exist yet
+        if (!response.ok && response.status === 404) {
+          response = await fetch(`${BACKEND_URL}/api/admin/leads`, {
+            headers: { 'Authorization': `Bearer ${password}` }
+          });
+        }
 
         if (response.ok) {
           authToken = password;
           document.getElementById('login-screen').style.display = 'none';
           document.getElementById('dashboard').style.display = 'block';
           loadAnalytics();
-        } else {
+        } else if (response.status === 401) {
           document.getElementById('login-error').textContent = 'Invalid password';
+          document.getElementById('login-error').style.display = 'block';
+        } else {
+          document.getElementById('login-error').textContent = `Error: ${response.status} - Backend may be updating`;
           document.getElementById('login-error').style.display = 'block';
         }
       } catch (error) {
-        document.getElementById('login-error').textContent = 'Connection error';
+        document.getElementById('login-error').textContent = `Connection error: ${error.message}`;
         document.getElementById('login-error').style.display = 'block';
       }
+
+      document.getElementById('login-btn').disabled = false;
     });
 
     // Enter key to login
