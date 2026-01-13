@@ -1167,7 +1167,7 @@ export default function BuildaBook() {
     setIsSubmittingOrder(true);
     
     try {
-      console.log('📋 Confirming order and submitting to Lulu...');
+      console.log('📋 Confirming order...');
       
       const response = await fetch(`${BACKEND_URL}/api/confirm-order`, {
         method: 'POST',
@@ -1178,16 +1178,21 @@ export default function BuildaBook() {
       const data = await response.json();
       
       if (data.success) {
-        console.log('✅ Order placed successfully!');
+        console.log('✅ Order confirmed! Order ID:', data.orderId);
         setOrderNumber(data.orderId);
-        setCurrentStep('success');
+        
+        // Show brief success message (1 second) then redirect
+        setTimeout(() => {
+          setCurrentStep('success');
+          setIsSubmittingOrder(false);
+        }, 1000);
       } else {
         alert('Failed to place order: ' + (data.error || 'Unknown error'));
+        setIsSubmittingOrder(false);
       }
     } catch (error) {
       console.error('❌ Error placing order:', error);
       alert('Failed to place order. Please try again.');
-    } finally {
       setIsSubmittingOrder(false);
     }
   };
@@ -3077,11 +3082,13 @@ export default function BuildaBook() {
                   </div>
                 )}
 
-                {/* Cover Type Selector */}
-                <CoverTypeSelector 
-                  selectedCover={coverType}
-                  onCoverChange={handleCoverChange}
-                />
+                {/* Cover Type Selector - Only show before payment */}
+                {paymentStatus !== 'paid' && (
+                  <CoverTypeSelector 
+                    selectedCover={coverType}
+                    onCoverChange={handleCoverChange}
+                  />
+                )}
 
                 <div className="max-w-md mx-auto bg-white rounded-3xl p-6 md:p-8 shadow-xl">
                   <h3 className="text-xl md:text-2xl font-bold mb-6 text-center">Order Summary</h3>
@@ -3110,7 +3117,7 @@ export default function BuildaBook() {
                         {isSubmittingOrder ? (
                           <>
                             <Loader className="w-5 h-5 animate-spin" />
-                            Placing Order...
+                            Processing Order...
                           </>
                         ) : (
                           <>
@@ -3119,6 +3126,14 @@ export default function BuildaBook() {
                           </>
                         )}
                       </button>
+                      {isSubmittingOrder && (
+                        <div className="mt-4 text-center">
+                          <p className="text-sm text-gray-600">
+                            ⏳ Your book is being prepared for printing...<br/>
+                            <span className="text-green-600 font-semibold">This will only take a moment!</span>
+                          </p>
+                        </div>
+                      )}
                       <p className="text-center text-sm text-amber-700 mt-3 font-semibold">
                         ⚠️ Please don't refresh the page while placing your order
                       </p>
