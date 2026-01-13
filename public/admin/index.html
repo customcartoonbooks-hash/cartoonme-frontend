@@ -380,6 +380,8 @@
 
     // Show users at specific funnel stage
     async function showUsersAtStage(stage, title) {
+      console.log(`Fetching users for stage: ${stage}`);
+      
       const startDate = document.getElementById('start-date').value;
       const endDate = document.getElementById('end-date').value;
       
@@ -388,11 +390,22 @@
         url += `?${startDate ? 'startDate=' + startDate : ''}${startDate && endDate ? '&' : ''}${endDate ? 'endDate=' + endDate : ''}`;
       }
 
+      console.log(`Fetching from URL: ${url}`);
+
       try {
         const response = await fetch(url, {
           headers: { 'Authorization': `Bearer ${authToken}` }
         });
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`API Error: ${response.status} - ${errorText}`);
+          alert(`Failed to load users: ${response.status} error`);
+          return;
+        }
+        
         const data = await response.json();
+        console.log(`Received ${data.total} users for stage ${stage}`);
 
         document.getElementById('modal-title').textContent = `${title} (${data.total})`;
         const tbody = document.getElementById('modal-tbody');
@@ -416,7 +429,7 @@
         document.getElementById('user-modal').classList.add('active');
       } catch (error) {
         console.error('Failed to load users:', error);
-        alert('Failed to load users at this stage');
+        alert('Failed to load users at this stage. Check console for details.');
       }
     }
 
