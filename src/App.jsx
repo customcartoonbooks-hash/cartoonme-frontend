@@ -2515,6 +2515,16 @@ export default function BuildaBook() {
               const artist = artists[i];
               const aiImage = selectedVariations[i];
               
+              // In preview mode, use sample images for artists that haven't been generated yet
+              const isRealImage = isPreviewMode ? i === 6 : true;
+              const sampleCategory = selectedGender === 'FemalePet' ? 'pet-female' :
+                                    selectedGender === 'MalePet' ? 'pet' :
+                                    selectedGender === 'Female' ? 'female' : 'male';
+              
+              const imageToShow = isRealImage && aiImage 
+                ? aiImage 
+                : { url: sampleImages[sampleCategory][i] };
+              
               bookPages.push({
                 type: 'artwork',
                 artistIdx: i,
@@ -2524,12 +2534,12 @@ export default function BuildaBook() {
                   <div 
                     className="w-full h-full bg-gray-900 flex items-center justify-center p-4 cursor-pointer hover:opacity-95 transition group"
                     onClick={() => {
-                      setSelectedModalImage({ ...aiImage, artist, artistIdx: i });
+                      setSelectedModalImage({ ...imageToShow, artist, artistIdx: i });
                       setShowImageModal(true);
                     }}>
                     <div className="relative w-full h-full flex items-center justify-center aspect-square">
                       <img
-                        src={aiImage?.url}
+                        src={imageToShow?.url}
                         alt={artist.name}
                         className="w-full h-full object-contain rounded-lg shadow-2xl"
                       />
