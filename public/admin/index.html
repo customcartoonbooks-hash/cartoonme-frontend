@@ -285,6 +285,38 @@
       </div>
 
       <div class="funnel-chart">
+        <h2 style="margin-bottom: 10px;">Visitor Engagement</h2>
+        <p style="color: #64748b; margin-bottom: 20px; font-size: 14px;">Track actions before photo upload</p>
+        <div class="stats-grid" style="margin-bottom: 0;">
+          <div class="stat-card" style="cursor: default;">
+            <div class="stat-number" id="page-views">-</div>
+            <div class="stat-label">Unique Page Views</div>
+          </div>
+          <div class="stat-card" style="cursor: default;">
+            <div class="stat-number" id="video-plays">-</div>
+            <div class="stat-label">Video Plays</div>
+          </div>
+          <div class="stat-card" style="cursor: default;">
+            <div class="stat-number" id="book-opens">-</div>
+            <div class="stat-label">3D Book Opens</div>
+          </div>
+          <div class="stat-card" style="cursor: default;">
+            <div class="stat-number" id="get-started-clicks">-</div>
+            <div class="stat-label">"Get Started" Clicks</div>
+          </div>
+          <div class="stat-card" style="cursor: default;">
+            <div class="stat-number" id="upload-clicks">-</div>
+            <div class="stat-label">Upload Button Clicks</div>
+          </div>
+          <div class="stat-card" style="cursor: default;">
+            <div class="stat-number" id="sample-books">-</div>
+            <div class="stat-label">Sample Book Views</div>
+            <div class="stat-percent" id="sample-breakdown">-</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="funnel-chart">
         <h2 style="margin-bottom: 20px;">Conversion Funnel</h2>
         <div id="funnel-container"></div>
       </div>
@@ -551,6 +583,24 @@
         document.getElementById('payment-completed').parentElement.onclick = () => showUsersAtStage('payment', 'Payment Completed');
         document.getElementById('preview-reached').parentElement.onclick = () => showUsersAtStage('preview', 'Preview Reached');
         document.getElementById('checkout-reached').parentElement.onclick = () => showUsersAtStage('checkout', 'Checkout Reached');
+
+        // Fetch visitor engagement events
+        const eventsResponse = await fetch(`${BACKEND_URL}/api/admin/analytics/events${url.includes('?') ? '&' : '?'}${startDate ? 'startDate=' + startDate : ''}${startDate && endDate ? '&' : ''}${endDate ? 'endDate=' + endDate : ''}`, {
+          headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        const eventsData = await eventsResponse.json();
+
+        if (eventsData.success) {
+          document.getElementById('page-views').textContent = eventsData.events.pageView;
+          document.getElementById('video-plays').textContent = eventsData.events.videoPlay;
+          document.getElementById('book-opens').textContent = eventsData.events.bookOpen;
+          document.getElementById('get-started-clicks').textContent = eventsData.events.getStartedClick;
+          document.getElementById('upload-clicks').textContent = eventsData.events.uploadClick;
+          
+          const totalSampleBooks = eventsData.events.sampleBookOpen.male + eventsData.events.sampleBookOpen.female + eventsData.events.sampleBookOpen.pet;
+          document.getElementById('sample-books').textContent = totalSampleBooks;
+          document.getElementById('sample-breakdown').textContent = `M: ${eventsData.events.sampleBookOpen.male} / F: ${eventsData.events.sampleBookOpen.female} / P: ${eventsData.events.sampleBookOpen.pet}`;
+        }
       } catch (error) {
         console.error('Failed to load analytics:', error);
       }

@@ -7,6 +7,31 @@ const BACKEND_URL = 'https://cartoonme-backend.onrender.com';
 const CLOUDFLARE_SITE_KEY = '0x4AAAAAAB6No5gcHaleduBl';
 const TURNSTILE_SITE_KEY = CLOUDFLARE_SITE_KEY;
 
+// Analytics tracking utility
+const trackEvent = async (eventType, metadata = {}) => {
+  try {
+    // Get or create visitor ID (persists across sessions)
+    let visitorId = localStorage.getItem('visitorId');
+    if (!visitorId) {
+      visitorId = `visitor_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      localStorage.setItem('visitorId', visitorId);
+    }
+    
+    await fetch(`${BACKEND_URL}/api/analytics/track`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        event: eventType,
+        visitorId,
+        sessionId: sessionStorage.getItem('sessionId'),
+        metadata
+      })
+    });
+  } catch (error) {
+    console.error('Analytics tracking error:', error);
+  }
+};
+
 export default function BuildaBook() {
   const [currentStep, setCurrentStep] = useState('home');
   const [uploadedImage, setUploadedImage] = useState(null);
@@ -126,6 +151,11 @@ export default function BuildaBook() {
     }, 2000); // Change image every 2 seconds
 
     return () => clearInterval(slideshowInterval);
+  }, []);
+
+  // Track page view on mount
+  useEffect(() => {
+    trackEvent('page_view');
   }, []);
 
 
@@ -1271,6 +1301,7 @@ export default function BuildaBook() {
                   <div className="space-y-4 pt-4">
                     <button
                       onClick={() => {
+                        trackEvent('get_started_click');
                         const uploadSection = document.getElementById('upload-section');
                         if (uploadSection) {
                           uploadSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -1476,9 +1507,11 @@ export default function BuildaBook() {
                       const video = document.getElementById('transformation-video');
                       if (video) {
                         video.play();
+                        trackEvent('video_play');
                       }
                       // Also open the book slideshow
                       setIsBookOpen(true);
+                      trackEvent('book_open', { trigger: 'video_button' });
                     }}
                   >
                     <div className="w-20 h-20 bg-white/20 backdrop-blur-lg rounded-full flex items-center justify-center hover:bg-white/30 hover:scale-110 transition-all">
@@ -1588,6 +1621,7 @@ export default function BuildaBook() {
                     <button
                       key={sample.type}
                       onClick={() => {
+                        trackEvent('sample_book_open', { type: sample.type });
                         setCurrentSampleBook(sample.type);
                         setShowSampleBrowser(true);
                       }}
@@ -1706,7 +1740,10 @@ export default function BuildaBook() {
                       className="hidden"
                     />
                     <button
-                      onClick={() => fileInputRef.current?.click()}
+                      onClick={() => {
+                        trackEvent('upload_click');
+                        fileInputRef.current?.click();
+                      }}
                       className="px-14 py-7 bg-gradient-to-r from-amber-600 to-red-600 text-white rounded-2xl font-black text-2xl shadow-2xl hover:shadow-amber-500/50 transition-all duration-500 transform hover:scale-110">
                       Choose Photo
                     </button>
