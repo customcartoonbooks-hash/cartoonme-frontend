@@ -65,6 +65,12 @@
       padding: 25px;
       border-radius: 15px;
       box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    .stat-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.15);
     }
     .stat-number {
       font-size: 36px;
@@ -183,6 +189,46 @@
       min-width: 200px;
       font-weight: 600;
     }
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.7);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 20px;
+    }
+    .modal-overlay.active {
+      display: flex;
+    }
+    .modal-content {
+      background: white;
+      border-radius: 15px;
+      max-width: 1000px;
+      width: 100%;
+      max-height: 80vh;
+      overflow-y: auto;
+      padding: 30px;
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .close-modal {
+      background: #e2e8f0;
+      border: none;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 20px;
+    }
   </style>
 </head>
 <body>
@@ -261,6 +307,19 @@
 
     <!-- LEADS TAB -->
     <div id="leads-tab" class="tab-content">
+      <div class="date-filters">
+        <div class="filter-group">
+          <label>Start Date</label>
+          <input type="date" id="leads-start-date" />
+        </div>
+        <div class="filter-group">
+          <label>End Date</label>
+          <input type="date" id="leads-end-date" />
+        </div>
+        <button id="filter-leads-btn">Apply Filter</button>
+        <button id="clear-leads-filter-btn" style="background: #64748b;">Clear</button>
+      </div>
+
       <div style="margin-bottom: 20px; display: flex; gap: 15px;">
         <button id="download-csv">📥 Download CSV</button>
         <button id="refresh-leads">🔄 Refresh</button>
@@ -285,11 +344,81 @@
     </div>
   </div>
 
+  <!-- MODAL FOR FILTERED USER LISTS -->
+  <div id="user-modal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="modal-title">Users</h2>
+        <button class="close-modal" onclick="closeUserModal()">✕</button>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Email</th>
+            <th>Name</th>
+            <th>Status</th>
+            <th>Created</th>
+            <th>Session ID</th>
+          </tr>
+        </thead>
+        <tbody id="modal-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
   <script>
     const BACKEND_URL = 'https://cartoonme-backend.onrender.com';
     let authToken = null;
     let leadsData = [];
+    let allLeadsData = []; // Store all leads for filtering
     let analyticsData = null;
+
+    // Close modal
+    function closeUserModal() {
+      document.getElementById('user-modal').classList.remove('active');
+    }
+
+    // Show users at specific funnel stage
+    async function showUsersAtStage(stage, title) {
+      const startDate = document.getElementById('start-date').value;
+      const endDate = document.getElementById('end-date').value;
+      
+      let url = `${BACKEND_URL}/api/admin/users/${stage}`;
+      if (startDate || endDate) {
+        url += `?${startDate ? 'startDate=' + startDate : ''}${startDate && endDate ? '&' : ''}${endDate ? 'endDate=' + endDate : ''}`;
+      }
+
+      try {
+        const response = await fetch(url, {
+          headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        const data = await response.json();
+
+        document.getElementById('modal-title').textContent = `${title} (${data.total})`;
+        const tbody = document.getElementById('modal-tbody');
+        tbody.innerHTML = '';
+
+        data.users.forEach(user => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td><strong>${user.email || '-'}</strong></td>
+            <td>${user.name || '-'}</td>
+            <td>
+              ${user.isPaid ? '<span style="background: #10b981; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px;">💳 PAID</span>' : ''}
+              ${user.isPreview ? '<span style="background: #f59e0b; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px;">👁️ Preview</span>' : ''}
+            </td>
+            <td>${new Date(user.createdAt).toLocaleString()}</td>
+            <td><small>${user.sessionId}</small></td>
+          `;
+          tbody.appendChild(row);
+        });
+
+        document.getElementById('user-modal').classList.add('active');
+      } catch (error) {
+        console.error('Failed to load users:', error);
+        alert('Failed to load users at this stage');
+      }
+    }
 
     // Tab switching
     document.querySelectorAll('.tab').forEach(tab => {
@@ -401,13 +530,21 @@
         `).join('');
 
         document.getElementById('funnel-container').innerHTML = funnelHTML;
+
+        // Make stat cards clickable
+        document.getElementById('total-sessions').parentElement.onclick = () => showUsersAtStage('total', 'Total Visitors');
+        document.getElementById('photo-uploaded').parentElement.onclick = () => showUsersAtStage('photo', 'Photos Uploaded');
+        document.getElementById('email-submitted').parentElement.onclick = () => showUsersAtStage('email', 'Emails Submitted');
+        document.getElementById('payment-completed').parentElement.onclick = () => showUsersAtStage('payment', 'Payment Completed');
+        document.getElementById('preview-reached').parentElement.onclick = () => showUsersAtStage('preview', 'Preview Reached');
+        document.getElementById('checkout-reached').parentElement.onclick = () => showUsersAtStage('checkout', 'Checkout Reached');
       } catch (error) {
         console.error('Failed to load analytics:', error);
       }
     }
 
-    // Load leads
-    async function loadLeads() {
+    // Load leads with date filtering
+    async function loadLeads(filtered = false) {
       document.getElementById('leads-loading').style.display = 'block';
       document.getElementById('leads-table').style.display = 'none';
 
@@ -416,12 +553,30 @@
           headers: { 'Authorization': `Bearer ${authToken}` }
         });
         const data = await response.json();
-        leadsData = data.leads;
+        allLeadsData = data.leads;
+
+        // Apply date filtering if needed
+        let displayLeads = allLeadsData;
+        if (filtered) {
+          const startDate = document.getElementById('leads-start-date').value;
+          const endDate = document.getElementById('leads-end-date').value;
+          
+          if (startDate || endDate) {
+            displayLeads = allLeadsData.filter(lead => {
+              const leadDate = new Date(lead.createdAt);
+              if (startDate && leadDate < new Date(startDate)) return false;
+              if (endDate && leadDate > new Date(endDate + 'T23:59:59')) return false;
+              return true;
+            });
+          }
+        }
+
+        leadsData = displayLeads;
 
         const tbody = document.getElementById('leads-tbody');
         tbody.innerHTML = '';
 
-        data.leads.forEach(lead => {
+        displayLeads.forEach(lead => {
           const row = document.createElement('tr');
           row.innerHTML = `
             <td><strong>${lead.email || '-'}</strong></td>
@@ -451,6 +606,14 @@
       document.getElementById('start-date').value = '';
       document.getElementById('end-date').value = '';
       loadAnalytics();
+    });
+
+    // Leads filters
+    document.getElementById('filter-leads-btn').addEventListener('click', () => loadLeads(true));
+    document.getElementById('clear-leads-filter-btn').addEventListener('click', () => {
+      document.getElementById('leads-start-date').value = '';
+      document.getElementById('leads-end-date').value = '';
+      loadLeads(false);
     });
 
     // Refresh leads
