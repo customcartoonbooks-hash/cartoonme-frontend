@@ -2674,7 +2674,6 @@ export default function BuildaBook() {
                             src={variation.url} 
                             alt={artist.name}
                             className="w-full h-full object-cover"
-                            loading="lazy"
                           />
                         </div>
                       );
@@ -2996,7 +2995,7 @@ export default function BuildaBook() {
                         </div>
                       ) : (
                         <>
-                          {/* CURRENT IMAGE DISPLAY WITH HISTORY NAVIGATION */}
+                          {/* CURRENT IMAGE DISPLAY */}
                           <div className="mb-6">
                             {(() => {
                               const history = imageHistory[selectedArtistForChange] || [];
@@ -3049,39 +3048,6 @@ export default function BuildaBook() {
                               );
                             })()}
                           </div>
-
-                          {/* Show loading state if generating and no image yet */}
-                          {isGenerating && !generatedImages[selectedArtistForChange]?.[0] && (
-                            <div className="bg-white rounded-2xl p-8 text-center">
-                              <Loader className="w-12 h-12 animate-spin text-purple-600 mx-auto mb-4" />
-                              <p className="text-lg font-semibold text-gray-700 mb-4">Generating New Image...</p>
-                              
-                              {/* Progress Bar */}
-                              <div className="relative w-full h-4 bg-gray-200 rounded-full overflow-hidden mb-4">
-                                <div 
-                                  className="absolute left-0 top-0 h-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-300"
-                                  style={{ width: `${generationProgress}%` }}
-                                ></div>
-                              </div>
-                              
-                              <div className="flex justify-between items-center mb-4">
-                                <span className="text-sm text-gray-600">{generationProgress}% Complete</span>
-                                <span className="text-sm text-gray-600">
-                                  {generationProgress < 30 ? '~25 seconds' : 
-                                   generationProgress < 60 ? '~15 seconds' : 
-                                   generationProgress < 90 ? '~5 seconds' : 'Almost done!'}
-                                </span>
-                              </div>
-                              
-                              {/* Warning */}
-                              <div className="bg-yellow-50 border-2 border-yellow-400 rounded-xl p-3">
-                                <p className="text-yellow-800 font-semibold text-sm flex items-center justify-center gap-2">
-                                  <span className="text-xl">⚠️</span>
-                                  Please don't refresh or close this page!
-                                </p>
-                              </div>
-                            </div>
-                          )}
 
                           {/* ACTION BUTTONS */}
                           <div className="space-y-4">
