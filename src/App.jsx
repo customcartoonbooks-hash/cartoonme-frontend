@@ -2999,8 +2999,45 @@ export default function BuildaBook() {
                                     className="w-full h-auto object-contain rounded-xl shadow-lg"
                                   />
                                   
+                                  {/* Loading overlay during generation */}
+                                  {isGenerating && (
+                                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                                      <div className="bg-white rounded-2xl p-6 max-w-sm w-full mx-4">
+                                        <div className="flex items-center justify-center mb-4">
+                                          <Loader className="w-8 h-8 animate-spin text-purple-600 mr-3" />
+                                          <p className="text-lg font-semibold text-gray-700">Generating New Image...</p>
+                                        </div>
+                                        
+                                        {/* Progress Bar */}
+                                        <div className="relative w-full h-4 bg-gray-200 rounded-full overflow-hidden mb-4">
+                                          <div 
+                                            className="absolute left-0 top-0 h-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-300"
+                                            style={{ width: `${generationProgress}%` }}
+                                          ></div>
+                                        </div>
+                                        
+                                        <div className="flex justify-between items-center mb-2">
+                                          <span className="text-sm text-gray-600">{generationProgress}% Complete</span>
+                                          <span className="text-sm text-gray-600">
+                                            {generationProgress < 30 ? '~25 seconds' : 
+                                             generationProgress < 60 ? '~15 seconds' : 
+                                             generationProgress < 90 ? '~5 seconds' : 'Almost done!'}
+                                          </span>
+                                        </div>
+                                        
+                                        {/* Warning */}
+                                        <div className="mt-4 bg-yellow-50 border-2 border-yellow-400 rounded-xl p-3">
+                                          <p className="text-yellow-800 font-semibold text-center text-sm flex items-center justify-center gap-2">
+                                            <span className="text-xl">⚠️</span>
+                                            Please don't refresh or close this page!
+                                          </p>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )}
+                                  
                                   {/* History navigation overlay */}
-                                  {history.length > 1 && (
+                                  {history.length > 1 && !isGenerating && (
                                     <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-white/95 backdrop-blur-sm rounded-full px-6 py-3 shadow-2xl flex items-center gap-4">
                                       <button
                                         onClick={() => navigateHistory(selectedArtistForChange, 'back')}
@@ -3054,6 +3091,39 @@ export default function BuildaBook() {
                                   onClick={() => navigateHistory(selectedArtistForChange, 'forward')}
                                   disabled={(currentHistoryIndex[selectedArtistForChange] || 0) >= (imageHistory[selectedArtistForChange]?.length - 1 || 0)}
                                   className="flex-1 bg-gray-600 hover:bg-gray-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white py-3 rounded-xl font-bold transition flex items-center justify-center gap-2">
+                                  Next
+                                  <ChevronRight className="w-5 h-5" />
+                                </button>
+                              </div>
+                            )}
+                            
+                            {/* Previous/Next Navigation - Always visible if history exists */}
+                            {imageHistory[selectedArtistForChange]?.length > 1 && (
+                              <div className="flex items-center justify-center gap-4 mb-4">
+                                <button
+                                  onClick={() => navigateHistory(selectedArtistForChange, 'back')}
+                                  disabled={(currentHistoryIndex[selectedArtistForChange] || 0) === 0}
+                                  className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition ${
+                                    (currentHistoryIndex[selectedArtistForChange] || 0) === 0
+                                      ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                      : 'bg-gray-600 hover:bg-gray-700 text-white'
+                                  }`}>
+                                  <ChevronLeft className="w-5 h-5" />
+                                  Previous
+                                </button>
+                                
+                                <span className="text-gray-600 font-semibold">
+                                  {(currentHistoryIndex[selectedArtistForChange] || 0) + 1} / {imageHistory[selectedArtistForChange]?.length}
+                                </span>
+                                
+                                <button
+                                  onClick={() => navigateHistory(selectedArtistForChange, 'forward')}
+                                  disabled={(currentHistoryIndex[selectedArtistForChange] || 0) >= (imageHistory[selectedArtistForChange]?.length - 1 || 0)}
+                                  className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition ${
+                                    (currentHistoryIndex[selectedArtistForChange] || 0) >= (imageHistory[selectedArtistForChange]?.length - 1 || 0)
+                                      ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                      : 'bg-gray-600 hover:bg-gray-700 text-white'
+                                  }`}>
                                   Next
                                   <ChevronRight className="w-5 h-5" />
                                 </button>
