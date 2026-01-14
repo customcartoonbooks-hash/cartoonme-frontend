@@ -2976,22 +2976,16 @@ export default function BuildaBook() {
                         </button>
                       </div>
 
-                      {isGenerating ? (
-                        <div className="text-center py-12">
-                          <Loader className="w-16 h-16 text-amber-600 animate-spin mx-auto mb-4" />
-                          <p className="text-xl font-bold">Generating new image...</p>
-                          <p className="text-sm text-gray-500 mt-2">Cost: $0.15</p>
-                        </div>
-                      ) : (
-                        <>
-                          {/* CURRENT IMAGE DISPLAY WITH HISTORY NAVIGATION */}
-                          <div className="mb-6">
-                            {(() => {
-                              const history = imageHistory[selectedArtistForChange] || [];
-                              const currentIndex = currentHistoryIndex[selectedArtistForChange] || 0;
-                              const currentImage = history[currentIndex] || generatedImages[selectedArtistForChange]?.[0];
-                              
-                              return currentImage ? (
+                      {/* ALWAYS SHOW IMAGE - overlay appears during generation */}
+                      <>
+                        {/* CURRENT IMAGE DISPLAY WITH HISTORY NAVIGATION */}
+                        <div className="mb-6">
+                          {(() => {
+                            const history = imageHistory[selectedArtistForChange] || [];
+                            const currentIndex = currentHistoryIndex[selectedArtistForChange] || 0;
+                            const currentImage = history[currentIndex] || generatedImages[selectedArtistForChange]?.[0];
+                            
+                            return currentImage ? (
                                 <div className="relative">
                                   <img
                                     src={currentImage.url}
@@ -3075,28 +3069,41 @@ export default function BuildaBook() {
                             })()}
                           </div>
 
+                          {/* Show loading state if generating and no image yet */}
+                          {isGenerating && !generatedImages[selectedArtistForChange]?.[0] && (
+                            <div className="bg-white rounded-2xl p-8 text-center">
+                              <Loader className="w-12 h-12 animate-spin text-purple-600 mx-auto mb-4" />
+                              <p className="text-lg font-semibold text-gray-700 mb-4">Generating New Image...</p>
+                              
+                              {/* Progress Bar */}
+                              <div className="relative w-full h-4 bg-gray-200 rounded-full overflow-hidden mb-4">
+                                <div 
+                                  className="absolute left-0 top-0 h-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-300"
+                                  style={{ width: `${generationProgress}%` }}
+                                ></div>
+                              </div>
+                              
+                              <div className="flex justify-between items-center mb-4">
+                                <span className="text-sm text-gray-600">{generationProgress}% Complete</span>
+                                <span className="text-sm text-gray-600">
+                                  {generationProgress < 30 ? '~25 seconds' : 
+                                   generationProgress < 60 ? '~15 seconds' : 
+                                   generationProgress < 90 ? '~5 seconds' : 'Almost done!'}
+                                </span>
+                              </div>
+                              
+                              {/* Warning */}
+                              <div className="bg-yellow-50 border-2 border-yellow-400 rounded-xl p-3">
+                                <p className="text-yellow-800 font-semibold text-sm flex items-center justify-center gap-2">
+                                  <span className="text-xl">⚠️</span>
+                                  Please don't refresh or close this page!
+                                </p>
+                              </div>
+                            </div>
+                          )}
+
                           {/* ACTION BUTTONS */}
                           <div className="space-y-4">
-                            {/* Navigation Buttons */}
-                            {imageHistory[selectedArtistForChange]?.length > 1 && (
-                              <div className="flex gap-4">
-                                <button
-                                  onClick={() => navigateHistory(selectedArtistForChange, 'back')}
-                                  disabled={(currentHistoryIndex[selectedArtistForChange] || 0) === 0}
-                                  className="flex-1 bg-gray-600 hover:bg-gray-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white py-3 rounded-xl font-bold transition flex items-center justify-center gap-2">
-                                  <ChevronLeft className="w-5 h-5" />
-                                  Previous
-                                </button>
-                                <button
-                                  onClick={() => navigateHistory(selectedArtistForChange, 'forward')}
-                                  disabled={(currentHistoryIndex[selectedArtistForChange] || 0) >= (imageHistory[selectedArtistForChange]?.length - 1 || 0)}
-                                  className="flex-1 bg-gray-600 hover:bg-gray-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white py-3 rounded-xl font-bold transition flex items-center justify-center gap-2">
-                                  Next
-                                  <ChevronRight className="w-5 h-5" />
-                                </button>
-                              </div>
-                            )}
-                            
                             {/* Previous/Next Navigation - Always visible if history exists */}
                             {imageHistory[selectedArtistForChange]?.length > 1 && (
                               <div className="flex items-center justify-center gap-4 mb-4">
@@ -3160,7 +3167,6 @@ export default function BuildaBook() {
                             )}
                           </p>
                         </>
-                      )}
                     </div>
                   </div>
                 )}
