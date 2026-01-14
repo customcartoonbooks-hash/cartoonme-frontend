@@ -2988,103 +2988,148 @@ export default function BuildaBook() {
                         </button>
                       </div>
 
-                      {isGenerating ? (
-                        <div className="text-center py-12">
-                          <Loader className="w-16 h-16 text-amber-600 animate-spin mx-auto mb-4" />
-                          <p className="text-xl font-bold">Generating new image...</p>
-                          <p className="text-sm text-gray-500 mt-2">Cost: $0.15</p>
-                        </div>
-                      ) : (
-                        <>
-                          {/* CURRENT IMAGE DISPLAY WITH HISTORY NAVIGATION */}
-                          <div className="mb-6">
-                            {(() => {
-                              const history = imageHistory[selectedArtistForChange] || [];
-                              const currentIndex = currentHistoryIndex[selectedArtistForChange] || 0;
-                              const currentImage = history[currentIndex] || generatedImages[selectedArtistForChange]?.[0];
-                              
-                              return currentImage ? (
-                                <div className="relative">
-                                  <img
-                                    src={currentImage.url}
-                                    alt="Current variation"
-                                    className="w-full h-auto object-contain rounded-xl shadow-lg"
-                                  />
-                                  
-                                  {/* History navigation overlay */}
-                                  {history.length > 1 && (
-                                    <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-white/95 backdrop-blur-sm rounded-full px-6 py-3 shadow-2xl flex items-center gap-4">
-                                      <button
-                                        onClick={() => navigateHistory(selectedArtistForChange, 'back')}
-                                        disabled={currentIndex === 0}
-                                        className={`p-2 rounded-full transition ${
-                                          currentIndex === 0 
-                                            ? 'bg-gray-200 text-gray-400 cursor-not-allowed' 
-                                            : 'bg-amber-500 text-white hover:bg-amber-600'
-                                        }`}>
-                                        <ChevronLeft className="w-6 h-6" />
-                                      </button>
+                      {/* CURRENT IMAGE DISPLAY - Always show, overlay during generation */}
+                      <>
+                        <div className="mb-6">
+                          {(() => {
+                            const history = imageHistory[selectedArtistForChange] || [];
+                            const currentIndex = currentHistoryIndex[selectedArtistForChange] || 0;
+                            const currentImage = history[currentIndex] || generatedImages[selectedArtistForChange]?.[0];
+                            
+                            return currentImage ? (
+                              <div className="relative">
+                                <img
+                                  src={currentImage.url}
+                                  alt="Current variation"
+                                  className="w-full h-auto object-contain rounded-xl shadow-lg"
+                                />
+                                
+                                {/* Progress overlay during generation */}
+                                {isGenerating && (
+                                  <div className="absolute inset-0 bg-black/70 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                                    <div className="bg-white rounded-2xl p-6 max-w-sm w-full mx-4 shadow-2xl">
+                                      <div className="flex items-center justify-center mb-4">
+                                        <Loader className="w-8 h-8 animate-spin text-purple-600 mr-3" />
+                                        <p className="text-lg font-semibold text-gray-700">Generating New Image...</p>
+                                      </div>
                                       
-                                      <span className="font-bold text-gray-700 min-w-[60px] text-center">
-                                        {currentIndex + 1} / {history.length}
-                                      </span>
+                                      {/* Progress Bar */}
+                                      <div className="relative w-full h-4 bg-gray-200 rounded-full overflow-hidden mb-3">
+                                        <div 
+                                          className="absolute left-0 top-0 h-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-300 flex items-center justify-center"
+                                          style={{ width: `${generationProgress}%` }}
+                                        >
+                                          {generationProgress > 15 && (
+                                            <span className="text-xs font-bold text-white">{Math.round(generationProgress)}%</span>
+                                          )}
+                                        </div>
+                                      </div>
                                       
-                                      <button
-                                        onClick={() => navigateHistory(selectedArtistForChange, 'forward')}
-                                        disabled={currentIndex === history.length - 1}
-                                        className={`p-2 rounded-full transition ${
-                                          currentIndex === history.length - 1
-                                            ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                                            : 'bg-amber-500 text-white hover:bg-amber-600'
-                                        }`}>
-                                        <ChevronRight className="w-6 h-6" />
-                                      </button>
+                                      <div className="flex justify-between items-center mb-4">
+                                        <span className="text-sm text-gray-600">{generationProgress}% Complete</span>
+                                        <span className="text-sm text-gray-600 font-semibold">
+                                          {generationProgress < 30 ? '~25 seconds' : 
+                                           generationProgress < 60 ? '~15 seconds' : 
+                                           generationProgress < 90 ? '~5 seconds' : 'Almost done!'}
+                                        </span>
+                                      </div>
+                                      
+                                      {/* Warning */}
+                                      <div className="bg-yellow-50 border-2 border-yellow-400 rounded-xl p-3">
+                                        <p className="text-yellow-800 font-semibold text-sm flex items-center justify-center gap-2">
+                                          <span className="text-xl">⚠️</span>
+                                          Please don't refresh or close this page!
+                                        </p>
+                                      </div>
                                     </div>
-                                  )}
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              // First time - no image yet, show loading or prompt
+                              isGenerating ? (
+                                <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-8 text-center border-2 border-purple-200">
+                                  <Loader className="w-12 h-12 animate-spin text-purple-600 mx-auto mb-4" />
+                                  <p className="text-lg font-semibold text-gray-700 mb-4">Generating Your First Image...</p>
+                                  
+                                  {/* Progress Bar */}
+                                  <div className="relative w-full h-5 bg-white rounded-full overflow-hidden mb-4 shadow-inner">
+                                    <div 
+                                      className="absolute left-0 top-0 h-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-300 flex items-center justify-center"
+                                      style={{ width: `${generationProgress}%` }}
+                                    >
+                                      {generationProgress > 15 && (
+                                        <span className="text-xs font-bold text-white">{Math.round(generationProgress)}%</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                  
+                                  <div className="flex justify-between items-center mb-4">
+                                    <span className="text-sm text-gray-700 font-medium">{generationProgress}% Complete</span>
+                                    <span className="text-sm text-purple-600 font-bold">
+                                      {generationProgress < 30 ? '~25 seconds' : 
+                                       generationProgress < 60 ? '~15 seconds' : 
+                                       generationProgress < 90 ? '~5 seconds' : 'Almost done!'}
+                                    </span>
+                                  </div>
+                                  
+                                  {/* Warning */}
+                                  <div className="bg-yellow-50 border-2 border-yellow-400 rounded-xl p-4">
+                                    <p className="text-yellow-800 font-bold text-sm flex items-center justify-center gap-2">
+                                      <span className="text-2xl">⚠️</span>
+                                      Please don't refresh or close this page!
+                                    </p>
+                                  </div>
                                 </div>
                               ) : (
                                 <div className="text-center py-12 bg-gray-100 rounded-xl">
                                   <p className="text-gray-500">Click "Shuffle" below to generate a new image</p>
                                 </div>
-                              );
-                            })()}
-                          </div>
+                              )
+                            );
+                          })()}
+                        </div>
 
-                          {/* Show loading state if generating and no image yet */}
-                          {isGenerating && !generatedImages[selectedArtistForChange]?.[0] && (
-                            <div className="bg-white rounded-2xl p-8 text-center">
-                              <Loader className="w-12 h-12 animate-spin text-purple-600 mx-auto mb-4" />
-                              <p className="text-lg font-semibold text-gray-700 mb-4">Generating New Image...</p>
-                              
-                              {/* Progress Bar */}
-                              <div className="relative w-full h-4 bg-gray-200 rounded-full overflow-hidden mb-4">
-                                <div 
-                                  className="absolute left-0 top-0 h-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-300"
-                                  style={{ width: `${generationProgress}%` }}
-                                ></div>
-                              </div>
-                              
-                              <div className="flex justify-between items-center mb-4">
-                                <span className="text-sm text-gray-600">{generationProgress}% Complete</span>
-                                <span className="text-sm text-gray-600">
-                                  {generationProgress < 30 ? '~25 seconds' : 
-                                   generationProgress < 60 ? '~15 seconds' : 
-                                   generationProgress < 90 ? '~5 seconds' : 'Almost done!'}
-                                </span>
-                              </div>
-                              
-                              {/* Warning */}
-                              <div className="bg-yellow-50 border-2 border-yellow-400 rounded-xl p-3">
-                                <p className="text-yellow-800 font-semibold text-sm flex items-center justify-center gap-2">
-                                  <span className="text-xl">⚠️</span>
-                                  Please don't refresh or close this page!
-                                </p>
-                              </div>
-                            </div>
-                          )}
-
-                          {/* ACTION BUTTONS */}
+                        {/* ACTION BUTTONS */}
                           <div className="space-y-4">
+                            {/* Previous/Next Navigation - Show when not generating */}
+                            {!isGenerating && (
+                              <div className="flex items-center justify-center gap-4 bg-gray-50 rounded-xl p-4">
+                                <button
+                                  onClick={() => navigateHistory(selectedArtistForChange, 'back')}
+                                  disabled={(currentHistoryIndex[selectedArtistForChange] || 0) === 0}
+                                  className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition ${
+                                    (currentHistoryIndex[selectedArtistForChange] || 0) === 0
+                                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                      : 'bg-gray-600 hover:bg-gray-700 text-white shadow-lg'
+                                  }`}>
+                                  <ChevronLeft className="w-5 h-5" />
+                                  Previous
+                                </button>
+                                
+                                <div className="text-center min-w-[100px]">
+                                  <div className="text-2xl font-bold text-gray-700">
+                                    {(currentHistoryIndex[selectedArtistForChange] || 0) + 1} / {imageHistory[selectedArtistForChange]?.length || 1}
+                                  </div>
+                                  <div className="text-xs text-gray-500 mt-1">
+                                    {imageHistory[selectedArtistForChange]?.length === 1 ? 'Shuffle to compare' : 'Compare variations'}
+                                  </div>
+                                </div>
+                                
+                                <button
+                                  onClick={() => navigateHistory(selectedArtistForChange, 'forward')}
+                                  disabled={(currentHistoryIndex[selectedArtistForChange] || 0) >= ((imageHistory[selectedArtistForChange]?.length || 1) - 1)}
+                                  className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition ${
+                                    (currentHistoryIndex[selectedArtistForChange] || 0) >= ((imageHistory[selectedArtistForChange]?.length || 1) - 1)
+                                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                      : 'bg-gray-600 hover:bg-gray-700 text-white shadow-lg'
+                                  }`}>
+                                  Next
+                                  <ChevronRight className="w-5 h-5" />
+                                </button>
+                              </div>
+                            )}
+                            
                             {/* Shuffle and Select Buttons */}
                             <div className="grid grid-cols-2 gap-4">
                               <button
@@ -3115,7 +3160,6 @@ export default function BuildaBook() {
                             )}
                           </p>
                         </>
-                      )}
                     </div>
                   </div>
                 )}
