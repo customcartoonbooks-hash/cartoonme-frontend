@@ -1252,9 +1252,13 @@ export default function BuildaBook() {
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
           <button
             onClick={() => setCurrentStep('home')}
-            className="flex items-center gap-2 text-2xl font-bold">
-            <span>🎨</span>
-            <span className="bg-gradient-to-r from-amber-600 to-red-600 text-transparent bg-clip-text">
+            className="flex items-center gap-3">
+            <img 
+              src="/logo.png" 
+              alt="BuildaBook Logo" 
+              className="h-10 w-auto"
+            />
+            <span className="text-2xl font-bold bg-gradient-to-r from-amber-600 to-red-600 text-transparent bg-clip-text">
               BuildaBook
             </span>
           </button>
