@@ -96,18 +96,26 @@ export default function BuildaBook() {
   // Send heartbeat and fetch counter - only while user is on page
   useEffect(() => {
     const userId = getUserSessionId();
+    let isActive = true; // Prevent race conditions
     
     const sendHeartbeat = async () => {
+      if (!isActive) return; // Don't send if component unmounted
+      
       try {
         const response = await fetch(`${BACKEND_URL}/api/counter/heartbeat`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userId })
         });
+        
+        if (!isActive) return; // Don't update state if unmounted
+        
         const data = await response.json();
         setMasterpieceCount(data.count);
       } catch (error) {
-        console.error('Failed to send heartbeat:', error);
+        if (isActive) {
+          console.error('Failed to send heartbeat:', error);
+        }
       }
     };
     
@@ -117,8 +125,11 @@ export default function BuildaBook() {
     // Send heartbeat every 30 seconds while user is on page
     const heartbeatInterval = setInterval(sendHeartbeat, 30000);
     
-    return () => clearInterval(heartbeatInterval);
-  }, []);
+    return () => {
+      isActive = false; // Mark as inactive
+      clearInterval(heartbeatInterval); // Clear the interval
+    };
+  }, []); // Empty array = run once on mount
   
   // List of all 12 artists for slideshow
   const artistSlideshow = [
