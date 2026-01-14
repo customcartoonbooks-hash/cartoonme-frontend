@@ -35,6 +35,8 @@ const trackEvent = async (eventType, metadata = {}) => {
 export default function BuildaBook() {
   const [currentStep, setCurrentStep] = useState('home');
   const [uploadedImage, setUploadedImage] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [coverType, setCoverType] = useState('hardcover');
   const [coverColor, setCoverColor] = useState('blue');
   const [price, setPrice] = useState(49.99);
@@ -714,10 +716,24 @@ export default function BuildaBook() {
       return;
     }
     
+    // Set uploading state
+    setUploadProgress(0);
+    setIsUploading(true);
+    
     const reader = new FileReader();
+    
+    // Track file read progress
+    reader.onprogress = (e) => {
+      if (e.lengthComputable) {
+        const percentLoaded = Math.round((e.loaded / e.total) * 50); // First 50% is reading file
+        setUploadProgress(percentLoaded);
+      }
+    };
+    
     reader.onload = async (e) => {
       const imageData = e.target.result;
       setUploadedImage(imageData);
+      setUploadProgress(60); // File read complete
       
       try {
         const response = await fetch(`${BACKEND_URL}/api/create-session`, {
@@ -729,7 +745,12 @@ export default function BuildaBook() {
           })
         });
         
+        setUploadProgress(80); // Request sent
+        
         const data = await response.json();
+        
+        setUploadProgress(100); // Complete
+        
         if (data.success) {
           setSessionId(data.sessionId);
           setCurrentStep('verify-contact');
@@ -739,8 +760,12 @@ export default function BuildaBook() {
       } catch (error) {
         console.error('❌ Failed to create session:', error);
         alert('Failed to create session. Please try again.');
+      } finally {
+        setIsUploading(false);
+        setUploadProgress(0);
       }
     };
+    
     reader.readAsDataURL(file);
   };
 
@@ -1785,10 +1810,39 @@ export default function BuildaBook() {
               </div>
             )}
 
-            {uploadedImage && captchaVerified && !sessionId && (
-              <div className="mt-8 text-center">
-                <Loader className="w-8 h-8 animate-spin mx-auto text-amber-600" />
-                <p className="mt-2 text-gray-600">Creating your session...</p>
+            {isUploading && (
+              <div className="mt-8 max-w-md mx-auto">
+                <div className="bg-white rounded-2xl p-6 shadow-xl">
+                  <div className="flex items-center justify-center mb-4">
+                    <Loader className="w-8 h-8 animate-spin text-amber-600 mr-3" />
+                    <p className="text-lg font-semibold text-gray-700">Uploading Your Photo...</p>
+                  </div>
+                  
+                  {/* Progress Bar */}
+                  <div className="relative w-full h-4 bg-gray-200 rounded-full overflow-hidden mb-4">
+                    <div 
+                      className="absolute left-0 top-0 h-full bg-gradient-to-r from-amber-500 to-red-500 transition-all duration-300"
+                      style={{ width: `${uploadProgress}%` }}
+                    ></div>
+                  </div>
+                  
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm text-gray-600">{uploadProgress}% Complete</span>
+                    <span className="text-sm text-gray-600">
+                      {uploadProgress < 60 ? 'Reading file...' : 
+                       uploadProgress < 80 ? 'Creating session...' : 
+                       uploadProgress < 100 ? 'Almost done...' : 'Complete!'}
+                    </span>
+                  </div>
+                  
+                  {/* Warning */}
+                  <div className="mt-4 bg-yellow-50 border-2 border-yellow-400 rounded-xl p-4">
+                    <p className="text-yellow-800 font-semibold text-center flex items-center justify-center gap-2">
+                      <span className="text-2xl">⚠️</span>
+                      Please don't refresh or close this page!
+                    </p>
+                  </div>
+                </div>
               </div>
             )}
 
