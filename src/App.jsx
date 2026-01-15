@@ -148,9 +148,6 @@ export default function BuildaBook() {
   const [currentSampleBook, setCurrentSampleBook] = useState('male');
   const [currentSampleBookPage, setCurrentSampleBookPage] = useState(0);
   const [sampleBookColor, setSampleBookColor] = useState('blue');
-  // State for image history and navigation
-  const [imageHistory, setImageHistory] = useState({}); // Store history per artist: { 0: [img1, img2], 1: [...] }
-  const [currentHistoryIndex, setCurrentHistoryIndex] = useState({}); // Current index: { 0: 1, 1: 0 }
   const [paymentStatus, setPaymentStatus] = useState(null); // Track if user has paid
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
   
@@ -1056,13 +1053,6 @@ export default function BuildaBook() {
   };
 
   const regenerateArtist = async (artistIndex) => {
-    // Check shuffle limit (max 2 shuffles = 3 total images)
-    const currentHistory = imageHistory[artistIndex] || [];
-    if (currentHistory.length >= 3) {
-      alert('Maximum 3 variations reached for this artist. Please choose from the generated options.');
-      return;
-    }
-    
     setIsGenerating(true);
     const artist = artists[artistIndex];
     
@@ -1076,7 +1066,7 @@ export default function BuildaBook() {
     const artistPrompt = artist[promptKey];
 
     try {
-      console.log(`🎨 Generating variation ${currentHistory.length + 1} of 3 for ${artist.name}...`);
+      console.log(`🎨 Regenerating ${artist.name}...`);
       
       const response = await fetch(`${BACKEND_URL}/api/generate-variations`, {
         method: 'POST',
@@ -1094,27 +1084,13 @@ export default function BuildaBook() {
       if (data.success && data.variations && data.variations.length > 0) {
         const newImage = data.variations[0];
         
-        // Add new image to history
-        const updatedHistory = [...currentHistory, newImage];
-        
-        setImageHistory({
-          ...imageHistory,
-          [artistIndex]: updatedHistory
-        });
-        
-        // Set current index to newest image
-        setCurrentHistoryIndex({
-          ...currentHistoryIndex,
-          [artistIndex]: updatedHistory.length - 1
-        });
-        
-        // Update generatedImages to show current image
+        // Simply update generatedImages with new image
         setGeneratedImages({
           ...generatedImages,
           [artistIndex]: [newImage]
         });
         
-        console.log(`✅ New variation generated (${updatedHistory.length} of 3)`);
+        console.log(`✅ New variation generated`);
       }
     } catch (error) {
       console.error('❌ Regeneration failed:', error);
@@ -1125,39 +1101,6 @@ export default function BuildaBook() {
   };
 
   // Navigate through image history
-  const navigateHistory = (artistIndex, direction) => {
-    const history = imageHistory[artistIndex] || [];
-    const currentIndex = currentHistoryIndex[artistIndex] || 0;
-    
-    let newIndex;
-    if (direction === 'back') {
-      newIndex = Math.max(0, currentIndex - 1);
-    } else {
-      newIndex = Math.min(history.length - 1, currentIndex + 1);
-    }
-    
-    setCurrentHistoryIndex({
-      ...currentHistoryIndex,
-      [artistIndex]: newIndex
-    });
-    
-    // Update displayed image
-    setGeneratedImages({
-      ...generatedImages,
-      [artistIndex]: [history[newIndex]]
-    });
-  };
-
-  // Select current image and close modal
-  const selectCurrentImage = (artistIndex) => {
-    const history = imageHistory[artistIndex] || [];
-    const currentIndex = currentHistoryIndex[artistIndex] || 0;
-    const selectedImage = history[currentIndex] || generatedImages[artistIndex]?.[0];
-    
-    if (selectedImage) {
-      selectNewVariation(artistIndex, selectedImage);
-    }
-  };
 
   const selectNewVariation = async (artistIdx, variation) => {
     const newSelected = { ...selectedVariations, [artistIdx]: variation };
@@ -2999,56 +2942,19 @@ export default function BuildaBook() {
                         <>
                           {/* CURRENT IMAGE DISPLAY */}
                           <div className="mb-6">
-                            {(() => {
-                              const history = imageHistory[selectedArtistForChange] || [];
-                              const currentIndex = currentHistoryIndex[selectedArtistForChange] || 0;
-                              const currentImage = history[currentIndex] || generatedImages[selectedArtistForChange]?.[0];
-                              
-                              return currentImage ? (
-                                <div className="relative">
-                                  <img
-                                    src={currentImage.url}
-                                    alt="Current variation"
-                                    className="w-full h-auto object-contain rounded-xl shadow-lg"
-                                  />
-                                  
-                                  {/* History navigation overlay */}
-                                  {history.length > 1 && (
-                                    <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-white/95 backdrop-blur-sm rounded-full px-6 py-3 shadow-2xl flex items-center gap-4">
-                                      <button
-                                        onClick={() => navigateHistory(selectedArtistForChange, 'back')}
-                                        disabled={currentIndex === 0}
-                                        className={`p-2 rounded-full transition ${
-                                          currentIndex === 0 
-                                            ? 'bg-gray-200 text-gray-400 cursor-not-allowed' 
-                                            : 'bg-amber-500 text-white hover:bg-amber-600'
-                                        }`}>
-                                        <ChevronLeft className="w-6 h-6" />
-                                      </button>
-                                      
-                                      <span className="font-bold text-gray-700 min-w-[60px] text-center">
-                                        {currentIndex + 1} / {history.length}
-                                      </span>
-                                      
-                                      <button
-                                        onClick={() => navigateHistory(selectedArtistForChange, 'forward')}
-                                        disabled={currentIndex === history.length - 1}
-                                        className={`p-2 rounded-full transition ${
-                                          currentIndex === history.length - 1
-                                            ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                                            : 'bg-amber-500 text-white hover:bg-amber-600'
-                                        }`}>
-                                        <ChevronRight className="w-6 h-6" />
-                                      </button>
-                                    </div>
-                                  )}
-                                </div>
-                              ) : (
-                                <div className="text-center py-12 bg-gray-100 rounded-xl">
-                                  <p className="text-gray-500">Click "Shuffle" below to generate a new image</p>
-                                </div>
-                              );
-                            })()}
+                            {generatedImages[selectedArtistForChange]?.[0] ? (
+                              <div className="relative">
+                                <img
+                                  src={generatedImages[selectedArtistForChange][0].url}
+                                  alt="Current variation"
+                                  className="w-full h-auto object-contain rounded-xl shadow-lg"
+                                />
+                              </div>
+                            ) : (
+                              <div className="text-center py-12 bg-gray-100 rounded-xl">
+                                <p className="text-gray-500">Click "Shuffle" below to generate a new image</p>
+                              </div>
+                            )}
                           </div>
 
                           {/* ACTION BUTTONS */}
@@ -3057,31 +2963,24 @@ export default function BuildaBook() {
                             <div className="grid grid-cols-2 gap-4">
                               <button
                                 onClick={() => regenerateArtist(selectedArtistForChange)}
-                                disabled={isGenerating || (imageHistory[selectedArtistForChange]?.length >= 3)}
+                                disabled={isGenerating}
                                 className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white py-4 rounded-xl font-bold text-lg transition flex items-center justify-center gap-2">
                                 🔄 Shuffle
-                                {imageHistory[selectedArtistForChange]?.length >= 3 && (
-                                  <span className="text-xs">(Max)</span>
-                                )}
                               </button>
                               
                               <button
-                                onClick={() => selectCurrentImage(selectedArtistForChange)}
+                                onClick={() => {
+                                  const currentImage = generatedImages[selectedArtistForChange]?.[0];
+                                  if (currentImage) {
+                                    selectNewVariation(selectedArtistForChange, currentImage);
+                                  }
+                                }}
                                 className="bg-green-600 hover:bg-green-700 text-white py-4 rounded-xl font-bold text-lg transition flex items-center justify-center gap-2">
                                 <Check className="w-5 h-5" />
                                 Use This Image
                               </button>
                             </div>
                           </div>
-                          
-                          <p className="text-center text-sm text-gray-500 mt-4">
-                            Variation {(currentHistoryIndex[selectedArtistForChange] || 0) + 1} of {imageHistory[selectedArtistForChange]?.length || 1}
-                            {(imageHistory[selectedArtistForChange]?.length || 0) < 3 && (
-                              <span className="text-purple-600 font-semibold ml-2">
-                                ({3 - (imageHistory[selectedArtistForChange]?.length || 0)} shuffle{(3 - (imageHistory[selectedArtistForChange]?.length || 0)) !== 1 ? 's' : ''} remaining)
-                              </span>
-                            )}
-                          </p>
                         </>
                       )}
                     </div>
