@@ -650,14 +650,16 @@ export default function BuildaBook() {
 
   // Auto-transition from generating-preview to preview when Van Gogh is done
   useEffect(() => {
-    if (currentStep === 'generating-preview' && !isGenerating && selectedVariations[6]) {
+    const vanGoghComplete = selectedVariations[6];
+    if (currentStep === 'generating-preview' && !isGenerating && vanGoghComplete) {
       console.log('✅ Van Gogh complete! Auto-transitioning to preview...');
       setGenerationProgress(100);
       setTimeout(() => {
         setCurrentStep('preview');
       }, 500); // Brief delay to show 100% completion
     }
-  }, [currentStep, isGenerating, selectedVariations]);
+  }, [currentStep, isGenerating, selectedVariations[6]]);
+
 
   const saveSession = async (updates) => {
     if (!sessionId) {
