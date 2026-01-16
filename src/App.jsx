@@ -2944,7 +2944,12 @@ export default function BuildaBook() {
                         <div className="text-center py-12">
                           <Loader className="w-16 h-16 text-amber-600 animate-spin mx-auto mb-4" />
                           <p className="text-xl font-bold">Generating new image...</p>
-                          <p className="text-sm text-gray-500 mt-2">Cost: $0.15</p>
+                          <div className="mt-4 max-w-xs mx-auto">
+                            <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                              <div className="h-full bg-gradient-to-r from-amber-500 to-orange-500 rounded-full animate-pulse" style={{ width: '100%' }}></div>
+                            </div>
+                            <p className="text-sm text-gray-500 mt-2">This usually takes 20-30 seconds</p>
+                          </div>
                         </div>
                       ) : (
                         <>
