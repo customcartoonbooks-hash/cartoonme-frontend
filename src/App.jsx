@@ -471,6 +471,11 @@ export default function BuildaBook() {
               const checkResponse = await fetch(`${BACKEND_URL}/api/session/${ourSessionId}`);
               const checkData = await checkResponse.json();
               
+              // Update payment status if it changed
+              if (checkData.payment_status) {
+                setPaymentStatus(checkData.payment_status);
+              }
+              
               if (checkData.fulfillment_status === 'images_ready') {
                 clearInterval(checkInterval);
                 setBatchProgress(100); // Complete!
@@ -548,6 +553,7 @@ export default function BuildaBook() {
             setDedication(session.dedication || '');
             setEditedDedication(session.dedication || '');
             setCoverColor(session.cover_color || 'pink');
+            setPaymentStatus(session.payment_status); // FIX: Set payment status!
             
             const parsedGeneratedImages = typeof session.generated_images === 'string' 
               ? JSON.parse(session.generated_images) 
