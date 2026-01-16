@@ -655,7 +655,7 @@ export default function BuildaBook() {
         setCurrentStep('preview');
       }, 500); // Brief delay to show 100% completion
     }
-  }, [currentStep, isGenerating, selectedVariations[6]]);
+  }, [currentStep, isGenerating]); // Removed selectedVariations[6] - was causing infinite re-renders!
 
 
   const saveSession = async (updates) => {
@@ -2474,7 +2474,7 @@ export default function BuildaBook() {
               pageNumber: 2,
               content: (
                 <div className="w-full h-full bg-gradient-to-br from-amber-50 to-orange-50 flex items-center justify-center p-4 relative">
-                  <div className="relative w-full h-full max-w-full aspect-square">
+                  <div className="relative w-full h-full max-w-full" style={{ maxHeight: '100%', aspectRatio: '1/1' }}>
                     <img 
                       src="/book-pages/frame.png"
                       alt="Ornate Frame"
@@ -2488,7 +2488,7 @@ export default function BuildaBook() {
                           <Edit2 className="w-3 h-3" />
                           Edit
                         </button>
-                        <p className="text-xs md:text-sm lg:text-base text-gray-700 italic leading-snug font-serif whitespace-pre-wrap break-words max-w-full px-2">
+                        <p className="text-gray-700 italic leading-snug font-serif whitespace-pre-wrap break-words max-w-full px-2" style={{ fontSize: 'clamp(0.65rem, 2.5vw, 1rem)' }}>
                           {dedication || 'Click Edit to add your personal message'}
                         </p>
                       </div>
@@ -2619,6 +2619,8 @@ export default function BuildaBook() {
                             src={variation.url} 
                             alt={artist.name}
                             className="w-full h-full object-cover"
+                            loading="lazy"
+                            decoding="async"
                           />
                         </div>
                       );
