@@ -447,7 +447,7 @@ export default function BuildaBook() {
             // Check if order already placed - show success page instead of preview
             if (sessionData.fulfillment_status === 'order_placed' || sessionData.lulu_print_job_id) {
               console.log('✅ Order already placed! Showing success page');
-              setOrderNumber(sessionData.lulu_print_job_id);
+              setOrderNumber(sessionData.lulu_order_id);
               setCurrentStep('success');
             } else {
               console.log('⏸️  Order not placed yet - showing preview for customer review');
@@ -504,7 +504,7 @@ export default function BuildaBook() {
                 // Check if order already placed
                 if (checkData.fulfillment_status === 'order_placed' || checkData.lulu_print_job_id) {
                   console.log('✅ Order already placed! Showing success page');
-                  setOrderNumber(checkData.lulu_print_job_id);
+                  setOrderNumber(checkData.lulu_order_id);
                   setCurrentStep('success');
                 } else {
                   setCurrentStep('preview');
@@ -593,7 +593,7 @@ export default function BuildaBook() {
               
               if (session.fulfillment_status === 'order_placed' || session.lulu_print_job_id) {
                 console.log('✅ Order already placed! Showing success page');
-                setOrderNumber(session.lulu_print_job_id);
+                setOrderNumber(session.lulu_order_id);
                 setCurrentStep('success');
               } else {
                 console.log('⏸️  Order not yet placed - showing preview for review');
