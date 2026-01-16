@@ -2488,7 +2488,7 @@ export default function BuildaBook() {
                           <Edit2 className="w-3 h-3" />
                           Edit
                         </button>
-                        <p className="text-gray-700 italic leading-snug font-serif whitespace-pre-wrap break-words max-w-full px-2" style={{ fontSize: 'clamp(0.45rem, 1.8vw, 0.9rem)' }}>
+                        <p className="text-[0.45rem] sm:text-xs md:text-sm lg:text-base text-gray-700 italic leading-tight sm:leading-snug font-serif whitespace-pre-wrap break-words max-w-full px-1 md:px-2">
                           {dedication || 'Click Edit to add your personal message'}
                         </p>
                       </div>
