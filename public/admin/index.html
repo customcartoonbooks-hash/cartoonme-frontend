@@ -585,7 +585,11 @@
         document.getElementById('checkout-reached').parentElement.onclick = () => showUsersAtStage('checkout', 'Checkout Reached');
 
         // Fetch visitor engagement events
-        const eventsResponse = await fetch(`${BACKEND_URL}/api/admin/analytics/events${url.includes('?') ? '&' : '?'}${startDate ? 'startDate=' + startDate : ''}${startDate && endDate ? '&' : ''}${endDate ? 'endDate=' + endDate : ''}`, {
+        let eventsUrl = `${BACKEND_URL}/api/admin/analytics/events`;
+        if (startDate || endDate) {
+          eventsUrl += `?${startDate ? 'startDate=' + startDate : ''}${startDate && endDate ? '&' : ''}${endDate ? 'endDate=' + endDate : ''}`;
+        }
+        const eventsResponse = await fetch(eventsUrl, {
           headers: { 'Authorization': `Bearer ${authToken}` }
         });
         const eventsData = await eventsResponse.json();
