@@ -2449,12 +2449,13 @@ export default function BuildaBook() {
                   <button
                     onClick={async (e) => {
                       e.stopPropagation();
-                      const newName = prompt('Enter name for cover:', customerName || 'Your Name');
+                      const newName = prompt('Enter first name for cover:\n(First name only - will appear on book cover)', customerName || '');
                       if (newName !== null && newName.trim()) {
-                        const trimmedName = newName.trim();
-                        setCustomerName(trimmedName);
-                        console.log('🔄 Updating name to:', trimmedName);
-                        await saveSession({ customer_name: trimmedName });
+                        // Auto-trim to first name only (everything before first space)
+                        const firstName = newName.trim().split(' ')[0];
+                        setCustomerName(firstName);
+                        console.log('🔄 Updating name to:', firstName);
+                        await saveSession({ customer_name: firstName });
                       }
                     }}
                     className="absolute top-4 right-4 flex items-center gap-1 text-pink-700 hover:text-pink-900 text-sm bg-white px-4 py-2 rounded-full shadow-xl z-20 hover:bg-pink-50 transition font-bold border-2 border-pink-200">
@@ -2693,12 +2694,13 @@ export default function BuildaBook() {
                   <button
                     onClick={async (e) => {
                       e.stopPropagation();
-                      const newName = prompt('Enter name for cover:', customerName || 'Your Name');
+                      const newName = prompt('Enter first name for cover:\n(First name only - will appear on book cover)', customerName || '');
                       if (newName !== null && newName.trim()) {
-                        const trimmedName = newName.trim();
-                        setCustomerName(trimmedName);
-                        console.log('🔄 Updating name to:', trimmedName);
-                        await saveSession({ customer_name: trimmedName });
+                        // Auto-trim to first name only (everything before first space)
+                        const firstName = newName.trim().split(' ')[0];
+                        setCustomerName(firstName);
+                        console.log('🔄 Updating name to:', firstName);
+                        await saveSession({ customer_name: firstName });
                       }
                     }}
                     className="absolute top-4 right-4 flex items-center gap-1 text-pink-700 hover:text-pink-900 text-sm bg-white px-4 py-2 rounded-full shadow-xl z-20 hover:bg-pink-50 transition font-bold border-2 border-pink-200">
