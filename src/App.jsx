@@ -2029,12 +2029,17 @@ export default function BuildaBook() {
               <input
                 type="text"
                 value={customerName}
-                onChange={(e) => setCustomerName(e.target.value)}
-                placeholder="Enter your name"
+                onChange={(e) => {
+                  // Auto-trim to first name only
+                  const input = e.target.value;
+                  const firstName = input.trim().split(' ')[0];
+                  setCustomerName(firstName);
+                }}
+                placeholder="First name only"
                 maxLength={30}
                 className="w-full px-6 py-4 text-2xl text-center border-2 border-amber-300 rounded-xl focus:border-amber-600 focus:outline-none font-bold"
               />
-              <p className="text-sm text-gray-500 mt-2 text-center">Max 30 characters</p>
+              <p className="text-sm text-gray-500 mt-2 text-center">First name only - appears on cover</p>
             </div>
 
             <div className="mb-8">
@@ -2216,12 +2221,17 @@ export default function BuildaBook() {
               <input
                 type="text"
                 value={customerName}
-                onChange={(e) => setCustomerName(e.target.value)}
-                placeholder="Enter your name"
+                onChange={(e) => {
+                  // Auto-trim to first name only
+                  const input = e.target.value;
+                  const firstName = input.trim().split(' ')[0];
+                  setCustomerName(firstName);
+                }}
+                placeholder="First name only"
                 maxLength={30}
                 className="w-full px-6 py-4 text-2xl text-center border-2 border-amber-300 rounded-xl focus:border-amber-600 focus:outline-none font-bold"
               />
-              <p className="text-sm text-gray-500 mt-2 text-center">Max 30 characters</p>
+              <p className="text-sm text-gray-500 mt-2 text-center">First name only - appears on cover</p>
             </div>
 
             <div className="mb-8">
