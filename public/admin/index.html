@@ -284,6 +284,35 @@
         </div>
       </div>
 
+      <!-- AI COST TRACKING -->
+      <div class="funnel-chart" style="margin-top: 30px;">
+        <h2 style="margin-bottom: 10px;">💰 AI Generation Costs</h2>
+        <p style="color: #64748b; margin-bottom: 20px; font-size: 14px;">Track FAL.AI spending</p>
+        <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+          <div class="stat-card" style="cursor: default; border-left: 4px solid #10b981;">
+            <div class="stat-number" id="cost-today" style="color: #10b981;">$0.00</div>
+            <div class="stat-label">Today</div>
+          </div>
+          <div class="stat-card" style="cursor: default; border-left: 4px solid #3b82f6;">
+            <div class="stat-number" id="cost-month" style="color: #3b82f6;">$0.00</div>
+            <div class="stat-label">This Month</div>
+          </div>
+          <div class="stat-card" style="cursor: default; border-left: 4px solid #8b5cf6;">
+            <div class="stat-number" id="cost-all-time" style="color: #8b5cf6;">$0.00</div>
+            <div class="stat-label">All Time</div>
+          </div>
+          <div class="stat-card" style="cursor: default; border-left: 4px solid #f59e0b;">
+            <div class="stat-number" id="cost-per-customer" style="color: #f59e0b;">$0.00</div>
+            <div class="stat-label">Avg Per Customer</div>
+          </div>
+        </div>
+        <div style="margin-top: 15px; padding: 10px; background: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 6px;">
+          <p style="margin: 0; font-size: 13px; color: #92400e;">
+            <strong>📊 Cost Breakdown:</strong> $0.015 per image × ~13 images per customer = ~$0.20/customer (initial + Van Gogh preview)
+          </p>
+        </div>
+      </div>
+
       <div class="funnel-chart">
         <h2 style="margin-bottom: 10px;">Visitor Engagement</h2>
         <p style="color: #64748b; margin-bottom: 20px; font-size: 14px;">Track actions before photo upload</p>
@@ -583,6 +612,23 @@
         document.getElementById('payment-completed').parentElement.onclick = () => showUsersAtStage('payment', 'Payment Completed');
         document.getElementById('preview-reached').parentElement.onclick = () => showUsersAtStage('preview', 'Preview Reached');
         document.getElementById('checkout-reached').parentElement.onclick = () => showUsersAtStage('checkout', 'Checkout Reached');
+
+        // Fetch AI cost data
+        let costsUrl = `${BACKEND_URL}/api/admin/analytics/costs`;
+        if (startDate || endDate) {
+          costsUrl += `?${startDate ? 'startDate=' + startDate : ''}${startDate && endDate ? '&' : ''}${endDate ? 'endDate=' + endDate : ''}`;
+        }
+        const costsResponse = await fetch(costsUrl, {
+          headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        const costsData = await costsResponse.json();
+
+        if (costsData.success) {
+          document.getElementById('cost-today').textContent = `$${costsData.costs.today}`;
+          document.getElementById('cost-month').textContent = `$${costsData.costs.thisMonth}`;
+          document.getElementById('cost-all-time').textContent = `$${costsData.costs.allTime}`;
+          document.getElementById('cost-per-customer').textContent = `$${costsData.costs.perCustomer}`;
+        }
 
         // Fetch visitor engagement events
         let eventsUrl = `${BACKEND_URL}/api/admin/analytics/events`;

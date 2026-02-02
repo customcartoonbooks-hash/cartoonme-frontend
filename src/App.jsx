@@ -1059,6 +1059,15 @@ export default function BuildaBook() {
   };
 
   const regenerateArtist = async (artistIndex) => {
+    // CHECK SHUFFLE LIMIT BEFORE CALLING API
+    const MAX_SHUFFLES = 3;
+    const currentShuffles = shuffleCount[artistIndex] || 0;
+    
+    if (currentShuffles >= MAX_SHUFFLES) {
+      alert(`Maximum ${MAX_SHUFFLES} shuffles reached for this artist. This helps us keep costs down!`);
+      return;
+    }
+    
     setIsGenerating(true);
     const artist = artists[artistIndex];
     
@@ -1081,7 +1090,9 @@ export default function BuildaBook() {
           image: uploadedImage,
           artistName: artist.name,
           artistPrompt: artistPrompt,
-          count: 1  // Only generate 1 image
+          count: 1,  // Only generate 1 image
+          sessionId: sessionId,  // Send for backend validation
+          artistIndex: artistIndex  // Send for backend validation
         })
       });
 
@@ -1090,13 +1101,23 @@ export default function BuildaBook() {
       if (data.success && data.variations && data.variations.length > 0) {
         const newImage = data.variations[0];
         
+        // INCREMENT SHUFFLE COUNT
+        const newShuffleCount = {
+          ...shuffleCount,
+          [artistIndex]: currentShuffles + 1
+        };
+        setShuffleCount(newShuffleCount);
+        await saveSession({ shuffle_count: newShuffleCount });
+        
         // Simply update generatedImages with new image
         setGeneratedImages({
           ...generatedImages,
           [artistIndex]: [newImage]
         });
         
-        console.log(`✅ New variation generated`);
+        console.log(`✅ New variation generated (shuffle ${currentShuffles + 1}/${MAX_SHUFFLES})`);
+      } else if (data.error) {
+        alert(data.error);  // Show backend error (including shuffle limit)
       }
     } catch (error) {
       console.error('❌ Regeneration failed:', error);
