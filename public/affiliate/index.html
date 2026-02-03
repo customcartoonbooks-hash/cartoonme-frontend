@@ -332,7 +332,7 @@
             <tr>
               <td>${new Date(sale.created_at).toLocaleDateString()}</td>
               <td>${sale.order_id || 'Processing'}</td>
-              <td>$${sale.commission.toFixed(2)}</td>
+              <td>$${parseFloat(sale.commission).toFixed(2)}</td>
               <td>${sale.tickets_earned} 🎟️</td>
               <td><span class="badge badge-success">${sale.status}</span></td>
             </tr>
