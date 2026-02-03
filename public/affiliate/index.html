@@ -22,6 +22,24 @@
       padding: 30px;
       margin-bottom: 30px;
       box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .header-content h1 {
+      margin: 0;
+    }
+    .logout-btn {
+      padding: 10px 20px;
+      background: #ef4444;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .logout-btn:hover {
+      background: #dc2626;
     }
     .header h1 {
       font-size: 32px;
@@ -162,8 +180,11 @@
   <div class="container">
     <!-- Header -->
     <div class="header">
-      <h1>🎨 Affiliate Dashboard</h1>
-      <p id="welcome-text">Loading...</p>
+      <div class="header-content">
+        <h1>🎨 Affiliate Dashboard</h1>
+        <p id="welcome-text">Loading...</p>
+      </div>
+      <button class="logout-btn" onclick="logout()">Logout</button>
     </div>
 
     <!-- Stats Grid -->
@@ -228,7 +249,31 @@
     const BACKEND_URL = 'https://cartoonme-backend.onrender.com';
     const affiliateCode = window.location.pathname.split('/').pop();
     
+    // Check if logged in
+    function checkAuth() {
+      const authData = sessionStorage.getItem('affiliate_auth');
+      if (!authData) {
+        window.location.href = '/affiliate/login';
+        return null;
+      }
+      
+      const affiliate = JSON.parse(authData);
+      
+      // Verify the code in URL matches logged-in affiliate
+      if (affiliate.affiliate_code !== affiliateCode) {
+        alert('You can only view your own dashboard');
+        window.location.href = `/affiliate/${affiliate.affiliate_code}`;
+        return null;
+      }
+      
+      return affiliate;
+    }
+    
     async function loadDashboard() {
+      // Check authentication first
+      const loggedInAffiliate = checkAuth();
+      if (!loggedInAffiliate) return;
+      
       try {
         const response = await fetch(`${BACKEND_URL}/api/affiliate/dashboard/${affiliateCode}`);
         const data = await response.json();
@@ -250,11 +295,11 @@
         document.getElementById('total-earnings').textContent = `$${parseFloat(affiliate.total_earnings || 0).toFixed(2)}`;
         document.getElementById('total-tickets').textContent = `${affiliate.tickets || 0} 🎟️`;
         
-        // Update referral link (use your actual domain)
+        // Update referral link (use short format)
         const siteUrl = window.location.hostname === 'localhost' 
           ? 'http://localhost:5173' 
           : 'https://cartoonme-frontend.vercel.app'; // Update this to buildabook.store when ready
-        document.getElementById('referral-url').value = `${siteUrl}?ref=${affiliate.affiliate_code}`;
+        document.getElementById('referral-url').value = `${siteUrl}/${affiliate.affiliate_code}`;
         
         // Load prizes
         const prizesGrid = document.getElementById('prizes-grid');
@@ -345,6 +390,11 @@
       } catch (error) {
         alert('Failed to redeem prize');
       }
+    }
+    
+    function logout() {
+      sessionStorage.removeItem('affiliate_auth');
+      window.location.href = '/affiliate/login';
     }
     
     // Load dashboard on page load

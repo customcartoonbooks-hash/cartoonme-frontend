@@ -1,6 +1,14 @@
 {
   "rewrites": [
     {
+      "source": "/affiliate/signup",
+      "destination": "/affiliate/signup.html"
+    },
+    {
+      "source": "/affiliate/login",
+      "destination": "/affiliate/login.html"
+    },
+    {
       "source": "/affiliate/:code",
       "destination": "/affiliate/index.html"
     },
