@@ -193,9 +193,16 @@
         <div class="stat-number" id="total-sales">0</div>
         <div class="stat-label">Total Sales</div>
       </div>
-      <div class="stat-card">
-        <div class="stat-number" id="total-earnings">$0</div>
-        <div class="stat-label">Total Earnings</div>
+      <div class="stat-card" style="border: 3px solid #10b981;">
+        <div class="stat-number" id="total-earnings" style="color: #10b981;">$0</div>
+        <div class="stat-label">Commission Earnings</div>
+        <button 
+          id="request-payout-btn" 
+          onclick="requestPayout()" 
+          style="margin-top: 10px; padding: 8px 16px; background: #10b981; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; width: 100%;"
+        >
+          💰 Request Payout
+        </button>
       </div>
       <div class="stat-card" style="border: 3px solid #f59e0b;">
         <div class="stat-number" id="total-tickets" style="color: #f59e0b;">0 🎟️</div>
@@ -389,6 +396,46 @@
         }
       } catch (error) {
         alert('Failed to redeem prize');
+      }
+    }
+    
+    async function requestPayout() {
+      const loggedInAffiliate = JSON.parse(sessionStorage.getItem('affiliate_auth'));
+      if (!loggedInAffiliate) {
+        alert('Please login first');
+        return;
+      }
+      
+      const earnings = parseFloat(document.getElementById('total-earnings').textContent.replace('$', ''));
+      
+      if (earnings < 10) {
+        alert('Minimum payout is $10.00. Keep sharing to earn more!');
+        return;
+      }
+      
+      if (!confirm(`Request payout of $${earnings.toFixed(2)}?\n\nYou'll receive an email asking for your payment details (PayPal, Venmo, Zelle, or CashApp).`)) {
+        return;
+      }
+      
+      try {
+        const response = await fetch(`${BACKEND_URL}/api/affiliate/request-payout`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            affiliateCode: loggedInAffiliate.affiliate_code
+          })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          alert('✅ Payout requested!\n\nCheck your email for next steps. We\'ll process your payment within 48 hours.');
+          loadDashboard(); // Refresh
+        } else {
+          alert('Error: ' + data.error);
+        }
+      } catch (error) {
+        alert('Network error. Please try again.');
       }
     }
     
