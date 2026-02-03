@@ -93,6 +93,17 @@ export default function BuildaBook() {
     return sessionId;
   };
   
+  // CAPTURE AFFILIATE CODE FROM URL
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const affiliateCode = urlParams.get('ref');
+    
+    if (affiliateCode) {
+      sessionStorage.setItem('affiliate_code', affiliateCode);
+      console.log(`🎯 Affiliate code captured: ${affiliateCode}`);
+    }
+  }, []);
+  
   // Send heartbeat and fetch counter - only while user is on page
   useEffect(() => {
     const userId = getUserSessionId();
@@ -752,12 +763,15 @@ export default function BuildaBook() {
       setUploadProgress(60); // File read complete
       
       try {
+        const affiliateCode = sessionStorage.getItem('affiliate_code');
+        
         const response = await fetch(`${BACKEND_URL}/api/create-session`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
             uploadedImage: imageData,
-            captchaToken: captchaToken 
+            captchaToken: captchaToken,
+            affiliate_code: affiliateCode || null
           })
         });
         
