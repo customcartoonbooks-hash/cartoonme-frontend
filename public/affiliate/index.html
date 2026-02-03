@@ -194,8 +194,11 @@
         <div class="stat-label">Total Sales</div>
       </div>
       <div class="stat-card" style="border: 3px solid #10b981;">
-        <div class="stat-number" id="total-earnings" style="color: #10b981;">$0</div>
-        <div class="stat-label">Commission Earnings</div>
+        <div class="stat-number" id="available-earnings" style="color: #10b981;">$0.00</div>
+        <div class="stat-label">Available to Withdraw</div>
+        <div id="pending-notice" style="display: none; margin-top: 8px; padding: 6px; background: #fef3c7; border-radius: 6px; font-size: 13px; color: #92400e;">
+          ⏳ Payout pending
+        </div>
         <button 
           id="request-payout-btn" 
           onclick="requestPayout()" 
@@ -203,6 +206,9 @@
         >
           💰 Request Payout
         </button>
+        <div style="margin-top: 8px; font-size: 13px; color: #64748b;">
+          Total Earned: <span id="total-earnings-lifetime">$0.00</span>
+        </div>
       </div>
       <div class="stat-card" style="border: 3px solid #f59e0b;">
         <div class="stat-number" id="total-tickets" style="color: #f59e0b;">0 🎟️</div>
@@ -290,17 +296,50 @@
           return;
         }
         
-        const { affiliate, sales, prizes } = data;
+        const { affiliate, sales, prizes, pendingPayout, lifetimeEarnings } = data;
         
-        console.log('Dashboard data:', { affiliate, sales, prizes });
+        console.log('Dashboard data:', { affiliate, sales, prizes, pendingPayout, lifetimeEarnings });
         
         // Update header
         document.getElementById('welcome-text').textContent = `Welcome back, ${affiliate.name}! 👋`;
         
         // Update stats (convert to numbers in case PostgreSQL returns strings)
         document.getElementById('total-sales').textContent = affiliate.total_sales || 0;
-        document.getElementById('total-earnings').textContent = `$${parseFloat(affiliate.total_earnings || 0).toFixed(2)}`;
+        
+        const availableBalance = parseFloat(affiliate.total_earnings || 0);
+        const lifetimeTotal = parseFloat(lifetimeEarnings || 0);
+        
+        // Show available balance (what they can withdraw NOW)
+        document.getElementById('available-earnings').textContent = `$${availableBalance.toFixed(2)}`;
+        
+        // Show lifetime total earnings
+        document.getElementById('total-earnings-lifetime').textContent = `$${lifetimeTotal.toFixed(2)}`;
+        
         document.getElementById('total-tickets').textContent = `${affiliate.tickets || 0} 🎟️`;
+        
+        // Handle payout button state
+        const payoutBtn = document.getElementById('request-payout-btn');
+        const pendingNotice = document.getElementById('pending-notice');
+        
+        if (pendingPayout) {
+          // Has pending payout
+          payoutBtn.style.display = 'none';
+          pendingNotice.style.display = 'block';
+        } else if (availableBalance < 10) {
+          // Not enough to withdraw
+          payoutBtn.disabled = true;
+          payoutBtn.style.opacity = '0.5';
+          payoutBtn.style.cursor = 'not-allowed';
+          payoutBtn.textContent = `Need $${(10 - availableBalance).toFixed(2)} more`;
+        } else {
+          // Can request payout
+          payoutBtn.disabled = false;
+          payoutBtn.style.opacity = '1';
+          payoutBtn.style.cursor = 'pointer';
+          payoutBtn.style.display = 'block';
+          payoutBtn.textContent = '💰 Request Payout';
+          pendingNotice.style.display = 'none';
+        }
         
         // Update referral link (use short format)
         const siteUrl = window.location.hostname === 'localhost' 
@@ -406,7 +445,7 @@
         return;
       }
       
-      const earnings = parseFloat(document.getElementById('total-earnings').textContent.replace('$', ''));
+      const earnings = parseFloat(document.getElementById('available-earnings').textContent.replace('$', ''));
       
       if (earnings < 10) {
         alert('Minimum payout is $10.00. Keep sharing to earn more!');
