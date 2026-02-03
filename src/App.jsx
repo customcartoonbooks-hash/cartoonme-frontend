@@ -95,8 +95,26 @@ export default function BuildaBook() {
   
   // CAPTURE AFFILIATE CODE FROM URL
   useEffect(() => {
+    // HANDLE SHORT AFFILIATE LINKS (e.g., /TEST2025)
+    const path = window.location.pathname;
     const urlParams = new URLSearchParams(window.location.search);
-    const affiliateCode = urlParams.get('ref');
+    
+    // Check for ?ref= parameter first
+    let affiliateCode = urlParams.get('ref');
+    
+    // If no ?ref=, check if path is a short code (e.g., /TEST2025)
+    if (!affiliateCode && path.length > 1 && !path.includes('/session') && !path.includes('/affiliate') && !path.includes('/admin')) {
+      const potentialCode = path.substring(1); // Remove leading /
+      
+      // Check if it looks like an affiliate code (alphanumeric, no slashes)
+      if (/^[A-Z0-9]+$/i.test(potentialCode)) {
+        affiliateCode = potentialCode;
+        
+        // Redirect to home with ?ref= parameter for cleaner URL
+        window.history.replaceState({}, '', `/?ref=${affiliateCode}`);
+        console.log(`🎯 Short link detected, converted: /${affiliateCode} → /?ref=${affiliateCode}`);
+      }
+    }
     
     if (affiliateCode) {
       sessionStorage.setItem('affiliate_code', affiliateCode);
