@@ -247,6 +247,7 @@
     <div class="tabs">
       <button class="tab active" data-tab="analytics">📈 Analytics</button>
       <button class="tab" data-tab="leads">📧 Leads</button>
+      <button class="tab" data-tab="payouts">💰 Payouts</button>
     </div>
 
     <!-- ANALYTICS TAB -->
@@ -403,6 +404,41 @@
         <tbody id="leads-tbody"></tbody>
       </table>
     </div>
+
+    <!-- PAYOUTS TAB -->
+    <div id="payouts-tab" class="tab-content">
+      <div style="background: white; padding: 20px; border-radius: 15px; margin-bottom: 20px;">
+        <h2 style="margin-bottom: 15px;">💰 Commission Payout Requests</h2>
+        <p style="color: #64748b;">Manage affiliate commission payouts. Click "Mark as Paid" after sending payment.</p>
+      </div>
+
+      <div style="margin-bottom: 20px;">
+        <button id="refresh-payouts" onclick="loadPayouts()">🔄 Refresh</button>
+      </div>
+
+      <div id="payouts-loading" style="text-align: center; padding: 40px; background: white; border-radius: 15px;">
+        Loading payout requests...
+      </div>
+      
+      <table id="payouts-table" style="display: none;">
+        <thead>
+          <tr>
+            <th>Affiliate</th>
+            <th>Email</th>
+            <th>Amount</th>
+            <th>Payment Method</th>
+            <th>Status</th>
+            <th>Requested</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="payouts-tbody"></tbody>
+      </table>
+
+      <div id="no-payouts" style="display: none; text-align: center; padding: 40px; background: white; border-radius: 15px;">
+        <p style="color: #64748b; font-size: 18px;">No payout requests yet</p>
+      </div>
+    </div>
   </div>
 
   <!-- MODAL FOR FILTERED USER LISTS -->
@@ -506,6 +542,8 @@
           loadAnalytics();
         } else if (tab.dataset.tab === 'leads' && leadsData.length === 0) {
           loadLeads();
+        } else if (tab.dataset.tab === 'payouts') {
+          loadPayouts();
         }
       });
     });
@@ -758,6 +796,96 @@
       a.download = `leads-${new Date().toISOString().split('T')[0]}.csv`;
       a.click();
     });
+
+    // ===== PAYOUTS TAB =====
+    async function loadPayouts() {
+      const loading = document.getElementById('payouts-loading');
+      const table = document.getElementById('payouts-table');
+      const noPayouts = document.getElementById('no-payouts');
+      const tbody = document.getElementById('payouts-tbody');
+      
+      loading.style.display = 'block';
+      table.style.display = 'none';
+      noPayouts.style.display = 'none';
+      
+      try {
+        const response = await fetch(`${BACKEND_URL}/api/admin/payout-requests`, {
+          headers: { 'Authorization': `Bearer ${password}` }
+        });
+        
+        const data = await response.json();
+        
+        if (!data.success) {
+          alert('Failed to load payouts');
+          return;
+        }
+        
+        loading.style.display = 'none';
+        
+        if (data.requests.length === 0) {
+          noPayouts.style.display = 'block';
+          return;
+        }
+        
+        table.style.display = 'table';
+        tbody.innerHTML = data.requests.map(req => `
+          <tr style="background: ${req.status === 'pending' ? '#fef3c7' : req.status === 'paid' ? '#d1fae5' : 'white'};">
+            <td><strong>${req.name}</strong><br><small>${req.affiliate_code}</small></td>
+            <td>${req.email}</td>
+            <td><strong>$${parseFloat(req.amount).toFixed(2)}</strong></td>
+            <td>${req.payment_method || 'Not provided'}<br>
+                ${req.payment_details ? `<small>${req.payment_details}</small>` : ''}</td>
+            <td><span style="padding: 4px 12px; border-radius: 12px; font-weight: 600; 
+                background: ${req.status === 'pending' ? '#fbbf24' : req.status === 'paid' ? '#10b981' : '#64748b'}; 
+                color: white; font-size: 12px;">
+                ${req.status.toUpperCase()}
+            </span></td>
+            <td>${new Date(req.requested_at).toLocaleDateString()}</td>
+            <td>
+              ${req.status === 'pending' ? `
+                <button onclick="markAsPaid(${req.id}, '${req.name}', ${req.amount})" 
+                  style="padding: 8px 16px; background: #10b981; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                  ✅ Mark as Paid
+                </button>
+              ` : req.status === 'paid' ? `
+                <small style="color: #64748b;">Paid ${req.paid_at ? new Date(req.paid_at).toLocaleDateString() : ''}</small>
+              ` : ''}
+            </td>
+          </tr>
+        `).join('');
+      } catch (error) {
+        loading.style.display = 'none';
+        alert('Error loading payouts: ' + error.message);
+      }
+    }
+    
+    async function markAsPaid(payoutId, affiliateName, amount) {
+      const notes = prompt(`Mark $${amount} payout to ${affiliateName} as PAID?\n\nOptional note (e.g., "Sent via PayPal"):`);
+      
+      if (notes === null) return; // Cancelled
+      
+      try {
+        const response = await fetch(`${BACKEND_URL}/api/admin/payout-requests/${payoutId}/mark-paid`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${password}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ adminNotes: notes || null })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          alert('✅ Payout marked as paid! Affiliate will receive confirmation email.');
+          loadPayouts(); // Refresh
+        } else {
+          alert('Error: ' + data.error);
+        }
+      } catch (error) {
+        alert('Network error: ' + error.message);
+      }
+    }
   </script>
 </body>
 </html>
