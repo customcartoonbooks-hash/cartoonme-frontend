@@ -309,7 +309,7 @@
         </div>
         <div style="margin-top: 15px; padding: 10px; background: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 6px;">
           <p style="margin: 0; font-size: 13px; color: #92400e;">
-            <strong>📊 Cost Breakdown:</strong> $0.015 per image × ~13 images per customer = ~$0.20/customer (initial + Van Gogh preview)
+            <strong>📊 Cost Breakdown:</strong> $0.15 per image × ~13 images per customer = ~$1.95/customer (initial + Van Gogh preview)
           </p>
         </div>
       </div>
@@ -466,6 +466,7 @@
   <script>
     const BACKEND_URL = 'https://cartoonme-backend.onrender.com';
     let authToken = null;
+    let adminPassword = null; // Store admin password globally
     let leadsData = [];
     let allLeadsData = []; // Store all leads for filtering
     let analyticsData = null;
@@ -571,6 +572,7 @@
 
         if (response.ok) {
           authToken = password;
+          adminPassword = password; // Store globally for payout requests
           document.getElementById('login-screen').style.display = 'none';
           document.getElementById('dashboard').style.display = 'block';
           loadAnalytics();
@@ -810,7 +812,7 @@
       
       try {
         const response = await fetch(`${BACKEND_URL}/api/admin/payout-requests`, {
-          headers: { 'Authorization': `Bearer ${password}` }
+          headers: { 'Authorization': `Bearer ${adminPassword}` }
         });
         
         const data = await response.json();
@@ -868,7 +870,7 @@
         const response = await fetch(`${BACKEND_URL}/api/admin/payout-requests/${payoutId}/mark-paid`, {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${password}`,
+            'Authorization': `Bearer ${adminPassword}`,
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({ adminNotes: notes || null })
