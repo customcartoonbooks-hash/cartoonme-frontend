@@ -240,12 +240,14 @@
         
         const { affiliate, sales, prizes } = data;
         
+        console.log('Dashboard data:', { affiliate, sales, prizes });
+        
         // Update header
         document.getElementById('welcome-text').textContent = `Welcome back, ${affiliate.name}! 👋`;
         
-        // Update stats
+        // Update stats (convert to numbers in case PostgreSQL returns strings)
         document.getElementById('total-sales').textContent = affiliate.total_sales || 0;
-        document.getElementById('total-earnings').textContent = `$${(affiliate.total_earnings || 0).toFixed(2)}`;
+        document.getElementById('total-earnings').textContent = `$${parseFloat(affiliate.total_earnings || 0).toFixed(2)}`;
         document.getElementById('total-tickets').textContent = `${affiliate.tickets || 0} 🎟️`;
         
         // Update referral link (use your actual domain)
@@ -256,21 +258,25 @@
         
         // Load prizes
         const prizesGrid = document.getElementById('prizes-grid');
-        prizesGrid.innerHTML = prizes.map(prize => `
-          <div class="prize-card">
-            <div class="prize-icon">${getPrizeIcon(prize.prize_type)}</div>
-            <div class="prize-name">${prize.name}</div>
-            <div class="prize-cost">${prize.ticket_cost} 🎟️</div>
-            <button 
-              class="btn btn-primary" 
-              style="width: 100%; margin-top: 10px;"
-              onclick="redeemPrize(${prize.id}, ${prize.ticket_cost})"
-              ${affiliate.tickets < prize.ticket_cost ? 'disabled' : ''}
-            >
-              ${affiliate.tickets < prize.ticket_cost ? 'Not Enough Tickets' : 'Redeem'}
-            </button>
-          </div>
-        `).join('');
+        if (!prizes || prizes.length === 0) {
+          prizesGrid.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: #64748b;">No prizes available yet.</p>';
+        } else {
+          prizesGrid.innerHTML = prizes.map(prize => `
+            <div class="prize-card">
+              <div class="prize-icon">${getPrizeIcon(prize.prize_type)}</div>
+              <div class="prize-name">${prize.name}</div>
+              <div class="prize-cost">${prize.ticket_cost} 🎟️</div>
+              <button 
+                class="btn btn-primary" 
+                style="width: 100%; margin-top: 10px;"
+                onclick="redeemPrize(${prize.id}, ${prize.ticket_cost})"
+                ${affiliate.tickets < prize.ticket_cost ? 'disabled' : ''}
+              >
+                ${affiliate.tickets < prize.ticket_cost ? 'Not Enough Tickets' : 'Redeem'}
+              </button>
+            </div>
+          `).join('');
+        }
         
         // Load sales
         const salesTbody = document.getElementById('sales-tbody');
