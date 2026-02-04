@@ -247,6 +247,7 @@
     <div class="tabs">
       <button class="tab active" data-tab="analytics">📈 Analytics</button>
       <button class="tab" data-tab="leads">📧 Leads</button>
+      <button class="tab" data-tab="affiliates">👥 Affiliates</button>
       <button class="tab" data-tab="payouts">💰 Payouts</button>
     </div>
 
@@ -405,6 +406,42 @@
       </table>
     </div>
 
+    <!-- AFFILIATES TAB -->
+    <div id="affiliates-tab" class="tab-content">
+      <div style="background: white; padding: 20px; border-radius: 15px; margin-bottom: 20px;">
+        <h2 style="margin-bottom: 15px;">👥 All Affiliates</h2>
+        <p style="color: #64748b;">View all registered affiliates and their performance.</p>
+      </div>
+
+      <div style="margin-bottom: 20px;">
+        <button id="refresh-affiliates" onclick="loadAffiliates()">🔄 Refresh</button>
+      </div>
+
+      <div id="affiliates-loading" style="text-align: center; padding: 40px; background: white; border-radius: 15px;">
+        Loading affiliates...
+      </div>
+      
+      <table id="affiliates-table" style="display: none;">
+        <thead>
+          <tr>
+            <th>Code</th>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Total Sales</th>
+            <th>Total Earnings</th>
+            <th>Tickets</th>
+            <th>Status</th>
+            <th>Joined</th>
+          </tr>
+        </thead>
+        <tbody id="affiliates-tbody"></tbody>
+      </table>
+
+      <div id="no-affiliates" style="display: none; text-align: center; padding: 40px; background: white; border-radius: 15px;">
+        <p style="color: #64748b; font-size: 18px;">No affiliates yet</p>
+      </div>
+    </div>
+
     <!-- PAYOUTS TAB -->
     <div id="payouts-tab" class="tab-content">
       <div style="background: white; padding: 20px; border-radius: 15px; margin-bottom: 20px;">
@@ -543,6 +580,8 @@
           loadAnalytics();
         } else if (tab.dataset.tab === 'leads' && leadsData.length === 0) {
           loadLeads();
+        } else if (tab.dataset.tab === 'affiliates') {
+          loadAffiliates();
         } else if (tab.dataset.tab === 'payouts') {
           loadPayouts();
         }
@@ -858,6 +897,59 @@
       } catch (error) {
         loading.style.display = 'none';
         alert('Error loading payouts: ' + error.message);
+      }
+    }
+    
+    // ===== AFFILIATES TAB =====
+    async function loadAffiliates() {
+      const loading = document.getElementById('affiliates-loading');
+      const table = document.getElementById('affiliates-table');
+      const noAffiliates = document.getElementById('no-affiliates');
+      const tbody = document.getElementById('affiliates-tbody');
+      
+      loading.style.display = 'block';
+      table.style.display = 'none';
+      noAffiliates.style.display = 'none';
+      
+      try {
+        const response = await fetch(`${BACKEND_URL}/api/admin/affiliates`, {
+          headers: { 'Authorization': `Bearer ${adminPassword}` }
+        });
+        
+        const data = await response.json();
+        
+        if (!data.success) {
+          alert('Failed to load affiliates');
+          return;
+        }
+        
+        loading.style.display = 'none';
+        
+        if (data.affiliates.length === 0) {
+          noAffiliates.style.display = 'block';
+          return;
+        }
+        
+        table.style.display = 'table';
+        tbody.innerHTML = data.affiliates.map(aff => `
+          <tr>
+            <td><strong>${aff.affiliate_code}</strong></td>
+            <td>${aff.name}</td>
+            <td>${aff.email}</td>
+            <td>${aff.total_sales || 0}</td>
+            <td>$${parseFloat(aff.total_earnings || 0).toFixed(2)}</td>
+            <td>${aff.tickets || 0} 🎟️</td>
+            <td><span style="padding: 4px 12px; border-radius: 12px; font-weight: 600; 
+                background: ${aff.status === 'active' ? '#10b981' : '#64748b'}; 
+                color: white; font-size: 12px;">
+                ${aff.status ? aff.status.toUpperCase() : 'ACTIVE'}
+            </span></td>
+            <td>${new Date(aff.created_at).toLocaleDateString()}</td>
+          </tr>
+        `).join('');
+      } catch (error) {
+        loading.style.display = 'none';
+        alert('Error loading affiliates: ' + error.message);
       }
     }
     
