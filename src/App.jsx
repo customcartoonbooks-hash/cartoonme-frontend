@@ -1287,13 +1287,13 @@ export default function BuildaBook() {
       {showAffiliateBanner && (
         <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white py-2.5 px-4 flex items-center justify-center gap-3 relative">
           <span className="text-sm md:text-base font-medium">
-            💰 Share BuildABook, Earn $10/Sale + Win Amazon Gift Cards & Cash Bonuses!
+            💰 BuildABook Affiliate Program: Earn $10+ Every Sale • Passive income + Amazon gift cards & cash bonuses
           </span>
           <a 
             href="/affiliate/signup"
-            className="bg-white text-green-600 px-4 py-1 rounded-full text-sm font-bold hover:bg-green-50 transition-colors"
+            className="bg-white text-green-600 px-4 py-1 rounded-full text-sm font-bold hover:bg-green-50 transition-colors whitespace-nowrap"
           >
-            Join Free
+            Start Earning Free
           </a>
           <button
             onClick={dismissAffiliateBanner}

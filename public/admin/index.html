@@ -310,7 +310,7 @@
         </div>
         <div style="margin-top: 15px; padding: 10px; background: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 6px;">
           <p style="margin: 0; font-size: 13px; color: #92400e;">
-            <strong>📊 Cost Breakdown:</strong> $0.15 per image × ~13 images per customer = ~$1.95/customer (initial + Van Gogh preview)
+            <strong>📊 Cost Breakdown:</strong> <span class="cost-breakdown-text">$0.15 per image × ~13 images per customer = ~$1.95/customer (initial + Van Gogh preview)</span>
           </p>
         </div>
       </div>
@@ -786,10 +786,17 @@
         const costsData = await costsResponse.json();
 
         if (costsData.success) {
-          document.getElementById('cost-today').textContent = `$${costsData.costs.today}`;
-          document.getElementById('cost-month').textContent = `$${costsData.costs.thisMonth}`;
-          document.getElementById('cost-all-time').textContent = `$${costsData.costs.allTime}`;
-          document.getElementById('cost-per-customer').textContent = `$${costsData.costs.perCustomer}`;
+          const { today, thisMonth, allTime, perCustomer, totalImages, totalSessions } = costsData.costs;
+          
+          document.getElementById('cost-today').textContent = `$${today}`;
+          document.getElementById('cost-month').textContent = `$${thisMonth}`;
+          document.getElementById('cost-all-time').textContent = `$${allTime}`;
+          document.getElementById('cost-per-customer').textContent = `$${perCustomer}`;
+          
+          // Update breakdown text with actual data
+          const avgImagesPerCustomer = totalSessions > 0 ? (totalImages / totalSessions).toFixed(1) : 0;
+          const breakdownText = `$0.15 per image × ${totalImages} images generated across ${totalSessions} customers (avg ${avgImagesPerCustomer} images/customer)`;
+          document.querySelector('.cost-breakdown-text').textContent = breakdownText;
         }
 
         // Fetch visitor engagement events
