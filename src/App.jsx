@@ -75,6 +75,7 @@ export default function BuildaBook() {
   const [isVerifying, setIsVerifying] = useState(false);
   const [customerName, setCustomerName] = useState('');
   const [dedication, setDedication] = useState('');
+  const [showAffiliateBanner, setShowAffiliateBanner] = useState(true);
   
   // Homepage book preview slideshow
   const [homepageArtistIndex, setHomepageArtistIndex] = useState(0);
@@ -159,6 +160,20 @@ export default function BuildaBook() {
       clearInterval(heartbeatInterval); // Clear the interval
     };
   }, []); // Empty array = run once on mount
+  
+  // Check if affiliate banner was dismissed
+  useEffect(() => {
+    const dismissed = localStorage.getItem('affiliateBannerDismissed');
+    if (dismissed) {
+      const dismissedTime = parseInt(dismissed);
+      const sevenDays = 7 * 24 * 60 * 60 * 1000;
+      if (Date.now() - dismissedTime < sevenDays) {
+        setShowAffiliateBanner(false);
+      } else {
+        localStorage.removeItem('affiliateBannerDismissed');
+      }
+    }
+  }, []);
   
   // List of all 12 artists for slideshow
   const artistSlideshow = [
@@ -745,6 +760,11 @@ export default function BuildaBook() {
     console.log('✅ Captcha verified');
   };
 
+  const dismissAffiliateBanner = () => {
+    setShowAffiliateBanner(false);
+    localStorage.setItem('affiliateBannerDismissed', Date.now().toString());
+  };
+
   const processFile = async (file) => {
     if (!captchaToken) {
       alert('Please complete the security check first');
@@ -1262,6 +1282,29 @@ export default function BuildaBook() {
 
   return (
       <div className="min-h-screen bg-gradient-to-b from-amber-50 to-white">
+      
+      {/* AFFILIATE BANNER */}
+      {showAffiliateBanner && (
+        <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white py-2.5 px-4 flex items-center justify-center gap-3 relative">
+          <span className="text-sm md:text-base font-medium">
+            💰 Share BuildABook, Earn $10/Sale + Win Amazon Gift Cards & Cash Bonuses!
+          </span>
+          <a 
+            href="/affiliate/signup"
+            className="bg-white text-green-600 px-4 py-1 rounded-full text-sm font-bold hover:bg-green-50 transition-colors"
+          >
+            Join Free
+          </a>
+          <button
+            onClick={dismissAffiliateBanner}
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-white hover:text-green-100 p-1"
+            aria-label="Close banner"
+          >
+            <X size={18} />
+          </button>
+        </div>
+      )}
+      
       {/* HEADER */}
       <header className="bg-white shadow-sm sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
@@ -3299,6 +3342,23 @@ export default function BuildaBook() {
               className="mt-8 bg-gradient-to-r from-amber-600 to-red-600 text-white px-12 py-4 rounded-full font-bold hover:shadow-xl transition">
               Create Another Book
             </button>
+            
+            {/* AFFILIATE CTA */}
+            <div className="mt-12 bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl p-8 border-2 border-green-200">
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">🎉 Love your book?</h3>
+              <p className="text-lg text-gray-700 mb-4">
+                Share BuildABook with friends and earn <strong className="text-green-600">$10 per sale</strong>!
+              </p>
+              <p className="text-gray-600 mb-6">
+                Plus unlock bonus prizes like Amazon gift cards & cash payouts.
+              </p>
+              <a 
+                href="/affiliate/signup"
+                className="inline-block bg-gradient-to-r from-green-500 to-emerald-600 text-white px-8 py-4 rounded-full font-bold text-lg hover:shadow-xl transition-all hover:scale-105"
+              >
+                Become an Affiliate - It's Free! →
+              </a>
+            </div>
           </div>
 
           {/* ADD FLIPBOOK PREVIEW ON SUCCESS PAGE */}
@@ -4072,6 +4132,23 @@ export default function BuildaBook() {
           <span className="text-2xl">🎨</span>
           <p className="text-xl font-bold mt-2">BuildaBook</p>
           <p className="text-gray-400 mt-2">Turn photos into timeless art</p>
+          
+          {/* Footer Links */}
+          <div className="mt-6 flex justify-center gap-6 text-sm">
+            <a 
+              href="/affiliate/signup" 
+              className="text-green-400 hover:text-green-300 transition-colors font-medium"
+            >
+              💰 Earn Money
+            </a>
+            <span className="text-gray-600">|</span>
+            <a 
+              href="/affiliate/login" 
+              className="text-gray-400 hover:text-white transition-colors"
+            >
+              Affiliate Login
+            </a>
+          </div>
         </div>
       </footer>
     </div>
