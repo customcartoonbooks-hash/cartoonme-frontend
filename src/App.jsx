@@ -40,6 +40,8 @@ export default function BuildaBook() {
   const [coverType, setCoverType] = useState('hardcover');
   const [coverColor, setCoverColor] = useState('blue');
   const [price, setPrice] = useState(49.99);
+  const [hasAffiliateDiscount, setHasAffiliateDiscount] = useState(false);
+  const [affiliateCode, setAffiliateCode] = useState(null);
   const [sessionId, setSessionId] = useState(null);
   const [selectedGender, setSelectedGender] = useState(null);
   const [currentArtist, setCurrentArtist] = useState(0);
@@ -119,7 +121,9 @@ export default function BuildaBook() {
     
     if (affiliateCode) {
       sessionStorage.setItem('affiliate_code', affiliateCode);
-      console.log(`🎯 Affiliate code captured: ${affiliateCode}`);
+      setAffiliateCode(affiliateCode);
+      setHasAffiliateDiscount(true);
+      console.log(`🎯 Affiliate code captured: ${affiliateCode} - 10% discount applied!`);
     }
   }, []);
   
@@ -763,6 +767,18 @@ export default function BuildaBook() {
   const dismissAffiliateBanner = () => {
     setShowAffiliateBanner(false);
     localStorage.setItem('affiliateBannerDismissed', Date.now().toString());
+  };
+
+  // Calculate final price with affiliate discount
+  const getDisplayPrice = (basePrice) => {
+    if (hasAffiliateDiscount) {
+      return (basePrice * 0.9).toFixed(2); // 10% off
+    }
+    return basePrice.toFixed(2);
+  };
+
+  const getOriginalPrice = (coverType) => {
+    return coverType === 'hardcover' ? 49.99 : 39.99;
   };
 
   const processFile = async (file) => {
@@ -3163,10 +3179,31 @@ export default function BuildaBook() {
 
                 <div className="max-w-md mx-auto bg-white rounded-3xl p-6 md:p-8 shadow-xl">
                   <h3 className="text-xl md:text-2xl font-bold mb-6 text-center">Order Summary</h3>
+                  
+                  {hasAffiliateDiscount && (
+                    <div className="mb-4 p-3 bg-green-50 border-2 border-green-500 rounded-xl text-center">
+                      <p className="text-green-700 font-bold text-sm">
+                        🎉 10% Affiliate Discount Applied!
+                      </p>
+                      <p className="text-green-600 text-xs mt-1">
+                        Shared by: {affiliateCode}
+                      </p>
+                    </div>
+                  )}
+                  
                   <div className="space-y-4 mb-6">
                     <div className="flex justify-between py-3 border-b">
                       <span>{coverType === 'softcover' ? 'Softcover' : 'Hardcover'} Book</span>
-                      <span className="font-bold">${price.toFixed(2)}</span>
+                      <div className="text-right">
+                        {hasAffiliateDiscount && (
+                          <div className="text-gray-400 line-through text-sm">
+                            ${getOriginalPrice(coverType).toFixed(2)}
+                          </div>
+                        )}
+                        <span className={`font-bold ${hasAffiliateDiscount ? 'text-green-600' : ''}`}>
+                          ${getDisplayPrice(getOriginalPrice(coverType))}
+                        </span>
+                      </div>
                     </div>
                     <div className="flex justify-between py-3">
                       <span>Shipping</span>
@@ -3174,7 +3211,9 @@ export default function BuildaBook() {
                     </div>
                     <div className="flex justify-between py-4 bg-amber-50 rounded-xl px-4">
                       <span className="font-bold">Total</span>
-                      <span className="text-2xl font-bold text-amber-600">${price.toFixed(2)}</span>
+                      <span className="text-2xl font-bold text-amber-600">
+                        ${getDisplayPrice(getOriginalPrice(coverType))}
+                      </span>
                     </div>
                   </div>
                   
