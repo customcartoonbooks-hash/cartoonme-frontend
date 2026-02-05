@@ -119,11 +119,16 @@ export default function BuildaBook() {
       }
     }
     
+    // If still no code from URL, check sessionStorage
+    if (!affiliateCode) {
+      affiliateCode = sessionStorage.getItem('affiliate_code');
+    }
+    
     if (affiliateCode) {
       sessionStorage.setItem('affiliate_code', affiliateCode);
       setAffiliateCode(affiliateCode);
       setHasAffiliateDiscount(true);
-      console.log(`🎯 Affiliate code captured: ${affiliateCode} - 10% discount applied!`);
+      console.log(`🎯 Affiliate code ${urlParams.get('ref') ? 'captured' : 'restored'}: ${affiliateCode} - 10% discount applied!`);
     }
   }, []);
   
@@ -438,6 +443,14 @@ export default function BuildaBook() {
           setDedication(sessionData.dedication || '');
           setPaymentStatus(sessionData.payment_status); // 'paid'
           
+          // Restore affiliate code and discount from session
+          if (sessionData.affiliate_code) {
+            setAffiliateCode(sessionData.affiliate_code);
+            setHasAffiliateDiscount(true);
+            sessionStorage.setItem('affiliate_code', sessionData.affiliate_code);
+            console.log(`🎯 Affiliate discount restored from session: ${sessionData.affiliate_code}`);
+          }
+          
           // Check if images are ready (webhook should have generated them)
           // OR if we're coming back from old batch generation endpoint
           console.log('🔍 Session data:', {
@@ -602,6 +615,14 @@ export default function BuildaBook() {
             setEditedDedication(session.dedication || '');
             setCoverColor(session.cover_color || 'pink');
             setPaymentStatus(session.payment_status); // FIX: Set payment status!
+            
+            // Restore affiliate code and discount from session
+            if (session.affiliate_code) {
+              setAffiliateCode(session.affiliate_code);
+              setHasAffiliateDiscount(true);
+              sessionStorage.setItem('affiliate_code', session.affiliate_code);
+              console.log(`🎯 Affiliate discount restored from session: ${session.affiliate_code}`);
+            }
             
             const parsedGeneratedImages = typeof session.generated_images === 'string' 
               ? JSON.parse(session.generated_images) 
