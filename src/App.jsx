@@ -3199,6 +3199,8 @@ export default function BuildaBook() {
                 )}
 
                 <div className="max-w-md mx-auto bg-white rounded-3xl p-6 md:p-8 shadow-xl">
+                  {paymentStatus !== 'paid' && (
+                  <>
                   <h3 className="text-xl md:text-2xl font-bold mb-6 text-center">Order Summary</h3>
                   
                   {hasAffiliateDiscount && (
@@ -3237,6 +3239,8 @@ export default function BuildaBook() {
                       </span>
                     </div>
                   </div>
+                  </>
+                  )}
                   
                   {/* Show different button based on payment status */}
                   {paymentStatus === 'paid' ? (
